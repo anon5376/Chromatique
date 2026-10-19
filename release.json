@@ -1,0 +1,45 @@
+{
+  "version": "v4",
+  "name": "Chromatique",
+  "architecture": [
+    820,
+    512,
+    32
+  ],
+  "policy_moves": 1968,
+  "evaluation_kind": "fully_neural",
+  "fixed_material": false,
+  "classical_evaluation": false,
+  "network_unchanged": true,
+  "weights": {
+    "chromatique-v4.json.gz": "da4a36a30451488d1cbd3230d8fe9367ad7b9bd2edee2567d0ab1515ffda0d5b",
+    "chromatique-v4.native": "d6d70e384036e1101274268a900e42b133772470f56da3895c28ed2e7845ea56"
+  },
+  "upstream": {
+    "repository": "https://github.com/official-stockfish/Stockfish",
+    "tag": "sf_19",
+    "commit": "edb0d9db6731067ec50ce619ff372b463bc4dd5d",
+    "archive_url": "https://codeload.github.com/official-stockfish/Stockfish/tar.gz/edb0d9db6731067ec50ce619ff372b463bc4dd5d",
+    "archive_sha256": "4fc20699a5ecf7883b036ce180020f5e57979623ad719fd2a52839209521581b",
+    "license": "GPL-3.0-or-later"
+  },
+  "original_search_binary_sha256": "d23a9ba76b2a3fa5f8269504ef45f1ef6a1f72415e5087e3d29c5dd543b247dd",
+  "source_changes_vs_stockfish": [
+    "src/Makefile",
+    "src/chromatique_eval.cpp",
+    "src/chromatique_eval.h",
+    "src/engine.cpp",
+    "src/evaluate.cpp",
+    "src/main.cpp",
+    "src/misc.cpp",
+    "src/nnue/network.cpp",
+    "src/position.cpp",
+    "src/position.h",
+    "src/thread.cpp",
+    "src/uci.cpp",
+    "src/uci.h"
+  ],
+  "packaging_changes": "Executable-relative model discovery and v4 identity only; search, features, inference and weights preserved.",
+  "source_json_sha256": "2918f7fa577714659e7a88a2184d2d4d7f98459f226b2dfba74debfa8de0bc50",
+  "source_encoding": "gzip-compressed original JSON; decompresses byte-for-byte to the original v4 JSON"
+}

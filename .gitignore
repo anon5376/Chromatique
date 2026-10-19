@@ -1,0 +1,15 @@
+*.o
+*.d
+*.gcda
+*.gcno
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+bin/*
+!bin/.gitkeep
+src/.build_*
+src/.depend
+dist/
+verification-local.json
+weights/chromatique-v4.json

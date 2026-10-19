@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "date": "2026-10-19",
+  "platform": {
+    "system": "Darwin",
+    "machine": "arm64"
+  },
+  "compiler": "Apple clang version 21.0.0 (clang-2100.3.33.1)",
+  "tests_passed": 7,
+  "feature_value_policy_parity_positions": 120,
+  "features_exact": true,
+  "max_value_error_tolerance_cp": 0.02,
+  "max_policy_logit_error_tolerance": 0.0001,
+  "byte_identical_model_regeneration": true,
+  "perft": {
+    "start_depth4": 197281,
+    "kiwipete_depth3": 97862
+  },
+  "search_stop_mate_stalemate_verified": true,
+  "relocation_and_spaces_verified": true,
+  "missing_weights_aborts": true,
+  "credential_and_local_path_scan": "no hits",
+  "binary": {
+    "path": "bin/chromatique-v4",
+    "sha256": "55bddee865d40c5f45849ebab60d942e41fbda733fb01f6aeecc859e17caf024"
+  },
+  "weights": {
+    "chromatique-v4.json.gz": "da4a36a30451488d1cbd3230d8fe9367ad7b9bd2edee2567d0ab1515ffda0d5b",
+    "chromatique-v4.native": "d6d70e384036e1101274268a900e42b133772470f56da3895c28ed2e7845ea56"
+  },
+  "compressed_source_regeneration_byte_identical": true
+}

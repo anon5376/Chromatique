@@ -1,0 +1,495 @@
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -76,7 +76,7 @@
+ PGOBENCH = $(RUN_PREFIX) ./$(EXE) bench
+ 
+ ### Source and object files
+-SRCS = attacks.cpp benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
++SRCS = chromatique_eval.cpp attacks.cpp benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
+ 	misc.cpp movegen.cpp movepick.cpp position.cpp \
+ 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
+ 	nnue/nnue_accumulator.cpp nnue/nnue_misc.cpp nnue/network.cpp \
+@@ -1229,7 +1229,7 @@
+ 
+ # evaluation network (nnue)
+ net:
+-	@$(SHELL) ../scripts/net.sh
++	@true # Chromatique weights only; no Stockfish NNUE download
+ 
+ format:
+ 	$(CLANG-FORMAT) -i $(SRCS) $(OTHER_SRCS) $(HEADERS) -style=file
+--- a/src/chromatique_eval.cpp
++++ b/src/chromatique_eval.cpp
+@@ -0,0 +1,98 @@
++// Chromatique's fully learned evaluator for the isolated Stockfish-19 fork.
++// GPL-3.0-or-later. Stockfish NNUE evaluation is never called.
++#include "chromatique_eval.h"
++#include "misc.h"
++#ifdef __APPLE__
++#include <mach-o/dyld.h>
++#endif
++#include "uci.h"
++#include "movegen.h"
++#include <algorithm>
++#include <cmath>
++#include <cstdlib>
++#include <cstring>
++#include <fstream>
++#include <iomanip>
++#include <iostream>
++#include <sstream>
++#include <unordered_map>
++namespace Stockfish::Chromatique {
++namespace {
++constexpr int N=820,H=512,K=32,P=1968;
++struct Model {std::vector<float> data;std::unordered_map<std::string,int> moves;std::string sha,path;unsigned generation=0;};
++Model net;
++std::filesystem::path executable_directory;
++[[noreturn]] void fail(const std::string& message){std::cerr<<"Chromatique model error: "<<message<<std::endl;std::exit(1);}
++constexpr int O_B1=N*H,O_W2=O_B1+H,O_B2=O_W2+H*K,O_VALUE=O_B2+K,O_VBIAS=O_VALUE+K,O_LINEAR=O_VBIAS+1,O_LBIAS=O_LINEAR+N,O_POLICY=O_LBIAS+1,O_PBIAS=O_POLICY+H*P,O_TEMP=O_PBIAS+P,COUNT=O_TEMP+1;
++void first_layer(const std::array<float,N>& x,std::array<float,H>& h,float& direct){
++    const float* w=net.data.data();for(int j=0;j<H;++j)h[j]=w[O_B1+j];direct=w[O_LBIAS];
++    for(int i=0;i<N;++i)if(x[i]!=0){float v=x[i];direct+=w[O_LINEAR+i]*v;const float* column=w+i*H;for(int j=0;j<H;++j)h[j]+=column[j]*v;}
++    for(float& v:h)v=std::max(0.0f,v);
++}
++float dot(const float* w,const float* h){float a=0,b=0,c=0,d=0;for(int i=0;i<H;i+=4){a+=w[i]*h[i];b+=w[i+1]*h[i+1];c+=w[i+2]*h[i+2];d+=w[i+3]*h[i+3];}return (a+b)+(c+d);}
++}
++// Standalone packaging, 2026-10-19: locate the unchanged model independently of GUI working directory.
++void initialize_executable_path(const std::filesystem::path& input){
++    namespace fs=std::filesystem;fs::path executable=input;std::error_code error;
++#ifdef __APPLE__
++    std::uint32_t size=0;_NSGetExecutablePath(nullptr,&size);std::vector<char> buffer(size);
++    if(_NSGetExecutablePath(buffer.data(),&size)==0)executable=buffer.data();
++#elif defined(__linux__)
++    auto actual=fs::read_symlink("/proc/self/exe",error);if(!error)executable=actual;
++#elif defined(_WIN32)
++    executable=CommandLine::get_binary_directory(input)/input.filename();
++#endif
++    error.clear();auto canonical=fs::weakly_canonical(executable,error);
++    executable_directory=(error?fs::absolute(executable):canonical).parent_path();
++}
++std::string default_path(){
++    if(const char* p=std::getenv("CHROMATIQUE_NATIVE_MODEL");p&&*p)return p;
++    auto model=executable_directory.parent_path()/"weights"/"chromatique-v4.native";
++    auto adjacent=executable_directory/"weights"/"chromatique-v4.native";
++    if(std::filesystem::is_regular_file(adjacent))model=adjacent;
++    auto utf8=model.u8string();return std::string(utf8.begin(),utf8.end());
++}
++void load(const std::filesystem::path& path){
++    std::ifstream f(path,std::ios::binary);if(!f)fail("cannot open "+path.string());
++    char magic[8],sha[64];std::uint32_t dims[4];std::uint64_t expected;
++    f.read(magic,8);f.read(reinterpret_cast<char*>(dims),16);f.read(sha,64);f.read(reinterpret_cast<char*>(&expected),8);
++    if(!f||std::memcmp(magic,"CHROMA3\0",8)||dims[0]!=N||dims[1]!=H||dims[2]!=K||dims[3]!=P)fail("incompatible header");
++    std::vector<unsigned char> bytes((std::istreambuf_iterator<char>(f)),{});
++    if(bytes.size()!=COUNT*sizeof(float)+P*6)fail("truncated/trailing model data");
++    std::uint64_t checksum=14695981039346656037ull;for(auto b:bytes)checksum=(checksum^b)*1099511628211ull;
++    if(checksum!=expected)fail("checksum mismatch");
++    net.data.resize(COUNT);std::memcpy(net.data.data(),bytes.data(),COUNT*sizeof(float));
++    for(float v:net.data)if(!std::isfinite(v))fail("non-finite parameter");
++    if(net.data[O_TEMP]<=0)fail("invalid policy temperature");
++    net.moves.clear();const char* names=reinterpret_cast<const char*>(bytes.data()+COUNT*sizeof(float));
++    for(int i=0;i<P;++i){std::string name(names+i*6,strnlen(names+i*6,6));if(name.size()<4||name.size()>5||!net.moves.emplace(name,i).second)fail("invalid vocabulary");}
++    net.sha=std::string(sha,64);net.path=path.string();net.generation++;
++}
++void ensure_loaded(){if(net.data.size()!=COUNT)fail("no trained model loaded; Stockfish fallback forbidden");}
++std::array<float,N> features(const Position& pos){
++    std::array<float,N> x{};Color us=pos.side_to_move();int kings[2]={-1,-1},count[12]={},sumOwn[12]={},sumEnemy[12]={};
++    for(int s=0;s<64;++s){Piece p=pos.piece_on(Square(s));if(p==NO_PIECE)continue;int plane=int(type_of(p))-1+(color_of(p)==us?0:6),sq=us==WHITE?s:s^56;x[plane*64+sq]=1;count[plane]++;if(type_of(p)==KING)kings[color_of(p)==us?0:1]=sq;}
++    if(kings[0]<0||kings[1]<0)fail("missing king");
++    x[768]=1;x[769]=bool(pos.can_castle(us==WHITE?WHITE_OO:BLACK_OO));x[770]=bool(pos.can_castle(us==WHITE?WHITE_OOO:BLACK_OOO));x[771]=bool(pos.can_castle(us==WHITE?BLACK_OO:WHITE_OO));x[772]=bool(pos.can_castle(us==WHITE?BLACK_OOO:WHITE_OOO));
++    Square ep=pos.state()->chromatiqueEp;x[773]=ep==SQ_NONE?-1.0f:float((int(file_of(ep))+1)/8.0);x[774]=float(std::min(100,pos.rule50_count())/100.0);x[775]=pos.state()->repetition!=0;
++    int af=kings[0]%8,ar=kings[0]/8,bf=kings[1]%8,br=kings[1]/8;
++    x[776]=float(af/7.0);x[777]=float(ar/7.0);x[778]=float(bf/7.0);x[779]=float(br/7.0);x[780]=float(std::max(std::abs(af-bf),std::abs(ar-br))/7.0);x[781]=float(std::min({af,7-af,ar,7-ar})/3.0);x[782]=float(std::min({bf,7-bf,br,7-br})/3.0);
++    int occupied=0;for(int p=0;p<12;++p){occupied+=count[p];for(int s=0;s<64;++s)if(x[p*64+s]){sumOwn[p]+=std::max(std::abs(s%8-af),std::abs(s/8-ar));sumEnemy[p]+=std::max(std::abs(s%8-bf),std::abs(s/8-br));}x[784+p]=float(count[p]/8.0);if(count[p]){x[796+p]=float(double(sumOwn[p])/count[p]/7.0);x[808+p]=float(double(sumEnemy[p])/count[p]/7.0);}}
++    x[783]=float(occupied/32.0);return x;
++}
++double centipawns(const Position& pos){
++    ensure_loaded();struct Entry {Key key=0;double cp=0;unsigned generation=0;};static thread_local std::array<Entry,16384> cache;
++    Key key=pos.key();auto& entry=cache[key&16383];if(entry.generation==net.generation&&entry.key==key)return entry.cp;
++    auto x=features(pos);std::array<float,H> h;float direct;first_layer(x,h,direct);const float* w=net.data.data();float value=w[O_VBIAS]+direct;
++    for(int j=0;j<K;++j){float z=w[O_B2+j]+dot(w+O_W2+j*H,h.data());value+=w[O_VALUE+j]*std::max(0.0f,z);}
++    double cp=std::clamp(600.0*value,-10000.0,10000.0);entry={key,cp,net.generation};return cp;
++}
++Value evaluate(const Position& pos){return UCIEngine::from_cp(centipawns(pos),pos);}
++bool policy_enabled(){const char* p=std::getenv("CHROMATIQUE_POLICY");return !p||std::strcmp(p,"0");}
++std::vector<double> policy(const Position& pos,const std::vector<Move>& moves){
++    ensure_loaded();auto x=features(pos);std::array<float,H> h;float direct;first_layer(x,h,direct);std::vector<double> scores;const float* w=net.data.data();
++    for(Move move:moves){std::string name=UCIEngine::move(move,pos.is_chess960());if(pos.side_to_move()==BLACK){name[1]=char('9'-name[1]+'0');name[3]=char('9'-name[3]+'0');}auto found=net.moves.find(name);if(found==net.moves.end())fail("move outside vocabulary: "+name);int k=found->second;float z=w[O_PBIAS+k]+dot(w+O_POLICY+k*H,h.data());scores.push_back(z/w[O_TEMP]);}return scores;
++}
++std::string metadata(){ensure_loaded();std::ostringstream s;s<<"{\"name\":\"Chromatique v4\",\"model_sha256\":\""<<net.sha<<"\",\"search_kind\":\"stockfish19_native\",\"evaluation_kind\":\"fully_neural\",\"classical_evaluation\":false,\"fixed_material\":false,\"architecture\":[820,512,32],\"policy_enabled\":"<<(policy_enabled()?"true":"false")<<"}";return s.str();}
++std::string trace(const Position& pos){ensure_loaded();auto x=features(pos);std::ostringstream s;s<<std::setprecision(17)<<"chromatique {\"cp\":"<<centipawns(pos)<<",\"features\":[";for(int i=0;i<N;++i){if(i)s<<',';s<<x[i];}s<<"],\"internal\":"<<evaluate(pos)<<",\"roundtrip_cp\":"<<UCIEngine::to_cp(evaluate(pos),pos)<<",\"model_sha256\":\""<<net.sha<<"\",\"policy\":[";std::vector<Move> moves;for(Move m:MoveList<LEGAL>(pos))moves.push_back(m);auto logits=policy(pos,moves);for(usize i=0;i<moves.size();++i){if(i)s<<',';s<<"{\"move\":\""<<UCIEngine::move(moves[i],pos.is_chess960())<<"\",\"logit\":"<<logits[i]<<"}";}s<<"]}";return s.str();}
++}
+--- a/src/chromatique_eval.h
++++ b/src/chromatique_eval.h
+@@ -0,0 +1,20 @@
++// Chromatique native evaluator integration. GPL-3.0-or-later.
++#pragma once
++#include <array>
++#include <filesystem>
++#include <string>
++#include <vector>
++#include "position.h"
++namespace Stockfish::Chromatique {
++void initialize_executable_path(const std::filesystem::path&);
++std::string default_path();
++void load(const std::filesystem::path&);
++void ensure_loaded();
++std::array<float,820> features(const Position&);
++double centipawns(const Position&);
++Value evaluate(const Position&);
++std::string trace(const Position&);
++std::string metadata();
++bool policy_enabled();
++std::vector<double> policy(const Position&,const std::vector<Move>&);
++}
+--- a/src/engine.cpp
++++ b/src/engine.cpp
+@@ -1,3 +1,4 @@
++#include "chromatique_eval.h"
+ /*
+   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+   Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
+@@ -64,6 +65,7 @@
+     networkFile{std::nullopt, ""},
+     network(numaContext, get_default_network()) {
+ 
++    Chromatique::load(path_from_utf8(Chromatique::default_path()));
+     pos.set(StartFEN, false, &states->back());
+ 
+     options.add(  //
+@@ -133,7 +135,7 @@
+     options.add("SyzygyProbeLimit", Option(7, 0, 7));
+ 
+     options.add(  //
+-      "EvalFile", Option(EvalFileDefaultName, [this](const Option& o) {
++      "ChromatiqueModel", Option(Chromatique::default_path().c_str(), [this](const Option& o) {
+           load_network(path_from_utf8(std::string(o)));
+           return std::nullopt;
+       }));
+@@ -264,71 +266,28 @@
+ // network related
+ 
+ void Engine::verify_network() const {
+-    const auto file = path_from_utf8(std::string(options["EvalFile"]));
+-    network->verify(onVerifyNetwork, networkFile, file);
+-
+-    auto statuses = network.get_status_and_errors();
+-    for (usize i = 0; i < statuses.size(); ++i)
+-    {
+-        const auto [status, error] = statuses[i];
+-        std::string message        = "Network replica " + std::to_string(i + 1) + ": ";
+-        if (status == SystemWideSharedConstantAllocationStatus::NoAllocation)
+-        {
+-            message += "No allocation.";
+-        }
+-        else if (status == SystemWideSharedConstantAllocationStatus::LocalMemory)
+-        {
+-            message += "Local memory.";
+-        }
+-        else if (status == SystemWideSharedConstantAllocationStatus::SharedMemory)
+-        {
+-            message += "Shared memory.";
+-        }
+-        else
+-        {
+-            message += "Unknown status.";
+-        }
+-
+-        if (error.has_value())
+-        {
+-            message += " " + *error;
+-        }
+-
+-        onVerifyNetwork(message);
+-    }
++    Chromatique::ensure_loaded();
+ }
+ 
+ std::unique_ptr<Eval::NNUE::Network> Engine::get_default_network() {
+-
+-    auto network_ = std::make_unique<NN::Network>();
+-
+-    network_->load(binaryDirectory, std::filesystem::path{}, networkFile);
+-
+-    return network_;
++    return std::make_unique<NN::Network>(); // Zero stub; Stockfish evaluation is forbidden.
+ }
+ 
+ void Engine::load_network(const std::filesystem::path& file) {
+-    network.modify_and_replicate(
+-      [this, &file](NN::Network& network_) { network_.load(binaryDirectory, file, networkFile); });
++    wait_for_search_finished();
++    Chromatique::load(file);
+     threads.clear();
+-    threads.ensure_network_replicated();
+ }
+ 
+ void Engine::save_network(const std::optional<std::filesystem::path>& file) {
+-    network.modify_and_replicate(
+-      [&file, this](NN::Network& network_) { network_.save(networkFile, file); });
++    onVerifyNetwork("Stockfish NNUE export is disabled in Chromatique.");
+ }
+ 
+ // utility functions
+ 
+ void Engine::trace_eval() const {
+-    StateListPtr trace_states(new std::deque<StateInfo>(1));
+-    Position     p;
+-    p.set(pos.fen(), options["UCI_Chess960"], &trace_states->back());
+-
+-    verify_network();
+-
+-    sync_cout << "\n" << Eval::trace(p, *network) << sync_endl;
++    Chromatique::ensure_loaded();
++    sync_cout << Chromatique::trace(pos) << sync_endl;
+ }
+ 
+ const OptionsMap& Engine::get_options() const { return options; }
+--- a/src/evaluate.cpp
++++ b/src/evaluate.cpp
+@@ -1,3 +1,4 @@
++#include "chromatique_eval.h"
+ /*
+   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+   Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
+@@ -44,28 +45,7 @@
+                      Eval::NNUE::AccumulatorStack&  accumulators,
+                      Eval::NNUE::AccumulatorCaches& caches,
+                      int                            optimism) {
+-
+-    assert(!pos.checkers());
+-
+-    auto [psqt, positional] = network.evaluate(pos, accumulators, caches);
+-
+-    Value nnue = psqt + positional;
+-
+-    // Blend optimism and eval with nnue complexity
+-    int nnueComplexity = std::abs(psqt - positional);
+-    optimism += optimism * i64(nnueComplexity) / 476;
+-    nnue -= nnue * i64(nnueComplexity) / 18236;
+-
+-    int material = 534 * pos.count<PAWN>() + pos.non_pawn_material();
+-    int v        = nnue + (nnue * i64(material) + optimism * i64(7675)) / 91000;
+-
+-    // Damp down the evaluation linearly when shuffling
+-    v -= v * pos.rule50_count() / 199;
+-
+-    // Guarantee evaluation does not hit the tablebase range
+-    v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+-
+-    return v;
++    return Chromatique::evaluate(pos);
+ }
+ 
+ // Like evaluate(), but instead of returning a value, it returns
+@@ -73,33 +53,7 @@
+ // descriptions and values of each evaluation term. Useful for debugging.
+ // Trace scores are from white's point of view
+ std::string Eval::trace(Position& pos, const Eval::NNUE::Network& network) {
+-
+-    if (pos.checkers())
+-        return "Final evaluation: none (in check)";
+-
+-    auto accumulators = std::make_unique<Eval::NNUE::AccumulatorStack>();
+-    auto caches       = std::make_unique<Eval::NNUE::AccumulatorCaches>(network);
+-
+-    std::stringstream ss;
+-    ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2);
+-    ss << '\n' << NNUE::trace(pos, network, *caches) << '\n';
+-
+-    ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
+-
+-    auto [psqt, positional] = network.evaluate(pos, *accumulators, *caches);
+-    Value v                 = psqt + positional;
+-    ss << "NNUE evaluation          " << v << " (side to move, internal units)\n";
+-    v = pos.side_to_move() == WHITE ? v : -v;
+-    ss << "NNUE evaluation        " << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)\n";
+-
+-    v = evaluate(network, pos, *accumulators, *caches, VALUE_ZERO);
+-    v = pos.side_to_move() == WHITE ? v : -v;
+-
+-    ss << "Final evaluation      ";
+-    ss << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)";
+-    ss << " [with scaled NNUE, ...]\n";
+-
+-    return ss.str();
++    return Chromatique::trace(pos);
+ }
+ 
+ }  // namespace Stockfish
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -1,3 +1,4 @@
++#include "chromatique_eval.h" // Standalone release packaging, 2026-10-19.
+ /*
+   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+   Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
+@@ -43,6 +44,7 @@
+     Position::init();
+ 
+     auto cli = CommandLine(argc, argv);
++    Chromatique::initialize_executable_path(path_from_utf8(cli.argv[0]));
+     auto uci = std::make_unique<UCIEngine>(std::move(cli));
+ 
+     Tune::init(uci->engine_options());
+--- a/src/misc.cpp
++++ b/src/misc.cpp
+@@ -175,8 +175,8 @@
+ }
+ 
+ std::string engine_info(bool to_uci) {
+-    return engine_version_info() + (to_uci ? "\nid author " : " by ")
+-         + "the Stockfish developers (see AUTHORS file)";
++    return std::string("Chromatique v4") + (to_uci ? "\nid author " : " by ")
++         + "Chromatique contributors and the Stockfish developers (GPL-3.0-or-later)";
+ }
+ 
+ 
+--- a/src/nnue/network.cpp
++++ b/src/nnue/network.cpp
+@@ -1,3 +1,5 @@
++#include <cstdlib>
++#include <iostream>
+ /*
+   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+   Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
+@@ -141,20 +143,8 @@
+ NetworkOutput Network::evaluate(const Position&    pos,
+                                 AccumulatorStack&  accumulatorStack,
+                                 AccumulatorCaches& cache) const {
+-
+-    constexpr u64 alignment = CacheLineSize;
+-
+-    alignas(alignment) TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
+-
+-    ASSERT_ALIGNED(transformedFeatures, alignment);
+-
+-    NNZInfo<L1> nnzInfo;
+-
+-    const int  bucket     = (pos.count<ALL_PIECES>() - 1) / 4;
+-    const auto psqt       = featureTransformer.transform(pos, accumulatorStack, cache,
+-                                                         transformedFeatures, bucket, nnzInfo);
+-    const auto positional = network[bucket].propagate(transformedFeatures, nnzInfo);
+-    return {static_cast<Value>(psqt / OutputScale), static_cast<Value>(positional / OutputScale)};
++    std::cerr << "Forbidden Stockfish NNUE evaluation" << std::endl;
++    std::abort();
+ }
+ 
+ 
+--- a/src/position.cpp
++++ b/src/position.cpp
+@@ -209,6 +209,7 @@
+     std::memset(reinterpret_cast<char*>(this), 0, sizeof(Position));
+     std::memset(si, 0, sizeof(StateInfo));
+     st = si;
++    st->chromatiqueEp = SQ_NONE;
+ 
+     ss >> std::noskipws;
+ 
+@@ -393,6 +394,7 @@
+         if ((col >= 'a' && col <= 'h') && (row == (sideToMove == WHITE ? '6' : '3')))
+         {
+             st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
++            st->chromatiqueEp = st->epSquare;
+ 
+             Bitboard pawns = attacks_bb<PAWN>(st->epSquare, ~sideToMove) & pieces(sideToMove, PAWN);
+             Bitboard target = (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)));
+@@ -852,6 +854,7 @@
+     Square to       = m.to_sq();
+     Piece  pc       = piece_on(from);
+     Piece  captured = m.type_of() == EN_PASSANT ? make_piece(them, PAWN) : piece_on(to);
++    st->chromatiqueEp = type_of(pc) == PAWN && std::abs(int(from) - int(to)) == 16 ? Square((int(from) + int(to)) / 2) : SQ_NONE;
+ 
+     dp.pc     = pc;
+     dp.from   = from;
+@@ -1360,6 +1363,7 @@
+     st->key ^= Zobrist::side;
+ 
+     st->pliesFromNull = 0;
++    st->chromatiqueEp = SQ_NONE;
+ 
+     st->capturedPiece = NO_PIECE;
+ 
+--- a/src/position.h
++++ b/src/position.h
+@@ -54,6 +54,7 @@
+     int    rule50;
+     int    pliesFromNull;
+     Square epSquare;
++    Square chromatiqueEp; // raw FEN/double-push target, including non-capturable EP
+ 
+     // Not copied when making a move (will be recomputed anyhow)
+     Key        key;
+@@ -316,7 +317,7 @@
+ 
+ inline Bitboard Position::check_squares(PieceType pt) const { return st->checkSquares[pt]; }
+ 
+-inline Key Position::key() const { return adjust_key50(st->key); }
++inline Key Position::key() const { return st->key ^ (Key(st->rule50 + 1) * 0x9e3779b97f4a7c15ULL) ^ (Key(st->chromatiqueEp + 1) * 0xbf58476d1ce4e5b9ULL) ^ (st->repetition ? 0x94d049bb133111ebULL : 0); }
+ 
+ template<bool AfterMove>
+ inline Key Position::adjust_key50(Key k) const {
+--- a/src/thread.cpp
++++ b/src/thread.cpp
+@@ -1,3 +1,4 @@
++#include "chromatique_eval.h"
+ /*
+   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+   Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
+@@ -320,6 +321,15 @@
+         for (const auto& m : MoveList<LEGAL>(pos))
+             rootMoves.emplace_back(m);
+ 
++    if (Chromatique::policy_enabled() && rootMoves.size() > 1) {
++        std::vector<Move> moves; for (const auto& r : rootMoves) moves.push_back(r.pv[0]);
++        auto logits = Chromatique::policy(pos, moves);
++        std::stable_sort(rootMoves.begin(), rootMoves.end(), [&](const auto& a, const auto& b) {
++            auto i = std::find(moves.begin(), moves.end(), a.pv[0]) - moves.begin();
++            auto j = std::find(moves.begin(), moves.end(), b.pv[0]) - moves.begin();
++            return logits[i] > logits[j];
++        });
++    }
+     Tablebases::Config tbConfig = Tablebases::rank_root_moves(options, pos, rootMoves);
+ 
+     // After ownership transfer 'states' becomes empty, so if we stop the search
+--- a/src/uci.cpp
++++ b/src/uci.cpp
+@@ -1,3 +1,4 @@
++#include "chromatique_eval.h"
+ /*
+   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+   Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
+@@ -122,9 +123,10 @@
+ 
+         else if (token == "uci")
+         {
+-            sync_cout << "id name " << engine_info(true) << "\n"
++            sync_cout << "id name Chromatique v4\nid author Chromatique and Stockfish developers (GPL-3.0-or-later)\n"
+                       << engine.get_options() << sync_endl;
+ 
++            sync_cout << "info string chromatique " << Chromatique::metadata() << sync_endl;
+             sync_cout << "uciok" << sync_endl;
+         }
+ 
+@@ -593,6 +595,11 @@
+     return int(std::round(100 * int(v) / a));
+ }
+ 
++Value UCIEngine::from_cp(double cp, const Position& pos) {
++    auto [a, b] = win_rate_params(pos);
++    return std::clamp(int(std::lround(cp * a / 100.0)), VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
++}
++
+ std::string UCIEngine::wdl(Value v, const Position& pos) {
+     std::stringstream ss;
+ 
+--- a/src/uci.h
++++ b/src/uci.h
+@@ -44,6 +44,7 @@
+     void loop();
+ 
+     static int         to_cp(Value v, const Position& pos);
++    static Value       from_cp(double cp, const Position& pos);
+     static std::string format_score(const Score& s);
+     static std::string square(Square s);
+     static std::string move(Move m, bool chess960 = false);
