@@ -16,6 +16,12 @@ as the central reference. The main opponents are its two 200-point neighbors
 and Stash 15.3. Fruit's 0/24 pilot is retained, and Fruit is excluded from the
 precision matches because it was too strong for an efficient estimate.
 
+The original 2,300-game runner process loaded the code from `28ce97f`.
+While it was running, `13dbda1` added an alternate output-directory argument
+for later reproductions; the default Fastchess command construction did not
+change. Each receipt retains the actual command. The original live process
+was not restarted to pick up that CLI change.
+
 Final-schedule games use `restart=on`, confirmed in Fastchess's implementation
 to discard and recreate each engine process after a game. This limits state
 carryover between openings. Pilot processes were reused. Fastchess printed
@@ -31,6 +37,12 @@ mixing in the initial style implementation. Before any style probes ran, the
 script was changed to report mate transitions separately. A focused test
 demonstrated the missing behavior and then passed with the correction.
 This review is distinct from the final code/results review still required.
+
+The deterministic low/high-loss example-selection rule was committed in
+`f36cb72`, after the first main match but before any common-position style
+probe existed. It uses the previously unseen probe estimates and has no
+source-game-outcome filter. Its timing is separate from the original match
+schedule's freeze.
 
 During timed matches, the agent inspected progress, edited documentation and
 scripts, and ran brief focused script tests (under one second of measured
