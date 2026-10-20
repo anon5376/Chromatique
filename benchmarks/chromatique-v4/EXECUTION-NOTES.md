@@ -1,10 +1,12 @@
 # Execution notes
 
 The target's C++ source and weights remain unchanged from the pinned v4
-revision. The initial seven release tests passed. The benchmark's six focused
+revision. The initial seven release tests passed. The benchmark's seven focused
 tests cover score orientation, opening-pair uncertainty, degenerate samples,
 replayed result/color/pair validation, material-offer accounting and exclusion
-of mate scores from centipawn loss.
+of mate scores from centipawn loss, and predeclared low/high-loss example
+selection. CLI checks also verified lossless log archiving, rejection of
+unfinished runs, and rejection of partial style panels before example judging.
 
 The complete main schedule, sampled opening panels and initial scripts were
 committed as `28ce97f` before the first measurement game started. All 168 pilot

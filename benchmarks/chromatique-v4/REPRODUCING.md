@@ -16,6 +16,7 @@ or use the setup script below. Then run:
 .benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/analyze.py benchmarks/chromatique-v4/pilot.json --output /tmp/chromatique-pilot-replayed.json
 .benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/analyze.py benchmarks/chromatique-v4/pilot-refine.json --output /tmp/chromatique-refine-replayed.json
 .benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/analyze.py benchmarks/chromatique-v4/schedule.json --output /tmp/chromatique-main-replayed.json
+.benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/analyze.py benchmarks/chromatique-v4/anchor-schedule.json --output /tmp/chromatique-anchor-replayed.json
 ```
 
 The PGN analysis needs python-chess and NumPy but does **not** start an engine.
@@ -64,7 +65,8 @@ sh benchmarks/chromatique-v4/scripts/setup.sh
 The setup script downloads source into ignored `.benchmark-tools/`, checks
 exact revisions, installs only the repository's existing Python development
 requirements, builds local binaries, downloads the checksum-pinned CC0
-opening archive, regenerates all four disjoint panels and runs the tests.
+opening archive, verifies/regenerates the four original panels and the new
+disjoint anchor panel, and runs the tests.
 It does not change the system package manager or engine source. Network
 access, GNU Make and a C/C++ compiler are required. The recorded Apple
 Silicon build used Apple Clang 21; the Linux build path is supplied but was
@@ -89,11 +91,17 @@ public ratings and the reference Stockfish calibration are described in
 
 ```sh
 .benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/run_matches.py benchmarks/chromatique-v4/schedule.json --results-dir .benchmark-tools/reproduction-results
+.benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/run_matches.py benchmarks/chromatique-v4/anchor-schedule.json --results-dir .benchmark-tools/reproduction-results
 .benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/analyze.py benchmarks/chromatique-v4/schedule.json --results-dir .benchmark-tools/reproduction-results --output .benchmark-tools/reproduction-results/summary.json
+.benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/analyze.py benchmarks/chromatique-v4/anchor-schedule.json --results-dir .benchmark-tools/reproduction-results --output .benchmark-tools/reproduction-results/anchor-summary.json
 .benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/style.py benchmarks/chromatique-v4/schedule.json --results-dir .benchmark-tools/reproduction-results --central-match main-sf2400
+.benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/inspect_examples.py --results-dir .benchmark-tools/reproduction-results
 ```
 
-The schedule contains 2,300 games. `5+0.05` means **five seconds initially plus
+The original schedule contains 2,300 games, and the separately predeclared
+anchor validation adds 200 games at **120+1**, the published Stockfish
+calibration clock. See [the extension](CALIBRATION-VALIDATION.md).
+`5+0.05` means **five seconds initially plus
 50 milliseconds per move**, not five seconds per move. The slower check is
 30 seconds initially plus 300 milliseconds per move. It remains below the
 120+1 setting used in Stockfish's published calibration. Allow substantial
