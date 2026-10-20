@@ -98,9 +98,10 @@ public ratings and the reference Stockfish calibration are described in
 .benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/inspect_examples.py --results-dir .benchmark-tools/reproduction-results
 ```
 
-The original schedule contains 2,300 games, and the separately predeclared
-anchor validation adds 200 games at **120+1**, the published Stockfish
-calibration clock. See [the extension](CALIBRATION-VALIDATION.md).
+The original schedule contains 2,300 games. The separately predeclared
+validations add 200 games each against Stockfish's 2400 setting and Stash
+15.3 at **120+1**, the historical clock of the fit inherited by Stockfish.
+See [the extensions and external-rating limits](CALIBRATION-VALIDATION.md).
 `5+0.05` means **five seconds initially plus
 50 milliseconds per move**, not five seconds per move. The slower check is
 30 seconds initially plus 300 milliseconds per move. It remains below the

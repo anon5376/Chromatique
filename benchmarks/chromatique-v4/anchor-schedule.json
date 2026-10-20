@@ -1,8 +1,8 @@
 {
   "frozen_utc": "2026-10-20T14:08:10.107810+00:00",
-  "purpose": "Separately predeclared validation at the published Stockfish17.1 calibration time control",
-  "games": 200,
-  "stopping_rule": "Fixed 100 opening pairs; no result-dependent extension",
+  "purpose": "Separate fixed-count validation of the inherited Stockfish calibration clock and externally rated Stash 15.3",
+  "games": 400,
+  "stopping_rule": "Fixed 100 opening pairs per opponent; no result-dependent extension",
   "matches": [
     {
       "id": "anchor-sf2400",
@@ -39,6 +39,38 @@
           }
         }
       ]
+    },
+    {
+      "id": "anchor-stash",
+      "panel": "anchor",
+      "pairs": 100,
+      "tc": "120+1",
+      "concurrency": 6,
+      "engines": [
+        {
+          "name": "Chromatique-v4",
+          "binary": "bin/chromatique-v4",
+          "options": {
+            "Threads": 1,
+            "Hash": 32,
+            "Ponder": false,
+            "Skill Level": 20,
+            "UCI_LimitStrength": false,
+            "SyzygyProbeLimit": 0,
+            "Move Overhead": 10
+          }
+        },
+        {
+          "name": "Stash15.3",
+          "binary": ".benchmark-tools/Stash/src/stash-bot",
+          "options": {
+            "Hash": 32,
+            "Move Overhead": 10
+          }
+        }
+      ]
     }
-  ]
+  ],
+  "stash_extension_declared_utc": "2026-10-20T14:35:36.149820+00:00",
+  "stash_extension_trigger": "Newly retrieved official CCRL Blitz row for Stash 15.3; before either anchor match and before main-stash"
 }
