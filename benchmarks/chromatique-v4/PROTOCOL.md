@@ -112,6 +112,14 @@ multiple comparisons. A degenerate bootstrap is marked unavailable.
 Mate-valued searches are recorded as mate transitions and excluded from
 ordinary centipawn-loss thresholds and medians.
 
+For example inspection, rejudge the two lowest nonnegative estimated-loss
+target offer candidates and the highest-loss candidate, ranking negative
+estimates as zero, breaking ties by probe index and removing duplicates.
+Exclude mate-valued ordinary losses.
+There is no source-game-outcome filter. Use 2,000,000 judge nodes per search
+and publish both engines' choices, full source histories and analysis PVs.
+These are selected examples, not a representative sacrifice success rate.
+
 ## Deliverables and acceptance
 
 - Reproducible setup/run/analysis commands; pinned source and input hashes.

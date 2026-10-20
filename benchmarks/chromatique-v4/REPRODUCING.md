@@ -43,6 +43,18 @@ selected move, search budget, judge score and principal variation. Mate
 transitions have their own record and are excluded from centipawn-loss
 comparisons. Style differences use one source position per opening pair.
 
+After the timed matches finish, inspect the predeclared examples with:
+
+```sh
+.benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/inspect_examples.py
+```
+
+The script uses two million Stockfish nodes per search. It selects the two
+lowest-loss and the highest-loss target offer candidates from the original
+probe estimates, without filtering source-game results. It preserves both
+choices and complete source histories in JSON and an annotated PGN. These
+PGN variations are analysis continuations, not new match results.
+
 ## Build the measured engines and tools
 
 ```sh
