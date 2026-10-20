@@ -35,7 +35,8 @@ the two separate extensions total 400 games.
 The official archive dates all 982 Stash games to May 2020 and omits their
 time-control tags. CCRL's current policy is scaled 2+1, but that does not
 establish the literal clock, hardware or hash used in those historical
-games. The rated x86-64 binary is also not our same-source ARM64 build.
+games. The list names a 64-bit build but gives no tested-binary checksum;
+identity or equal strength with our same-release ARM64 build is unverified.
 See [source evidence](SOURCES.md). This provides a conditional external
 comparison, not a reproduction of the CCRL rating experiment.
 

@@ -86,7 +86,7 @@
     },
     "local_author_source_revision": "7d17ff80eb53b9d4808fd285c7439e641f1c5a3b",
     "transfer_limits": [
-      "same release name does not establish binary identity or strength across x86-64 and ARM64",
+      "same release name does not establish binary identity or equal strength with our ARM64 build",
       "local clock is not speed-scaled to CCRL hardware",
       "published BayesElo and local logistic match Elo are different models",
       "match uncertainty does not include external anchor transfer error"
