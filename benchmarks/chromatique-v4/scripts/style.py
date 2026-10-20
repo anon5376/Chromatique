@@ -2,6 +2,7 @@
 import argparse
 from collections import defaultdict
 import csv
+import datetime
 import hashlib
 import json
 import math
@@ -155,8 +156,18 @@ def common_position_probe(spec, results_dir):
     if destination.exists() or manifest.exists():
         raise FileExistsError("Do not overwrite existing style probe evidence")
     positions, excluded = probe_positions(spec, results_dir)
+    judge_binary = ROOT / ".benchmark-tools/Stockfish/src/stockfish-17.1"
+    judge_options = {"Threads": 1, "Hash": 32, "UCI_LimitStrength": False, "Skill Level": 20, "SyzygyProbeLimit": 0}
+    paths = {"source_pgn": results_dir / (spec["id"] + ".pgn"),
+             "model": ROOT / "weights/chromatique-v4.native", "judge_binary": judge_binary,
+             "script": Path(__file__)}
+    paths.update({f"engine_{i}": ROOT / entry["binary"] for i, entry in enumerate(spec["engines"])})
     manifest.write_text(json.dumps(
-        {"source_match": spec["id"], "selection": "one hash-selected game and eligible preselected ply per opening pair",
+        {"prepared_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+         "source_match": spec["id"], "engine_spec": spec["engines"], "play_ponder": False,
+         "judge_binary": str(judge_binary.relative_to(ROOT)), "judge_options": judge_options,
+         "inputs_sha256": {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in paths.items()},
+         "selection": "one hash-selected game and eligible preselected ply per opening pair",
          "positions": positions, "excluded": excluded}, indent=2) + "\n")
     env = {k: v for k, v in os.environ.items() if not k.startswith("CHROMATIQUE_")}
     engines = []
@@ -165,8 +176,8 @@ def common_position_probe(spec, results_dir):
             engine = chess.engine.SimpleEngine.popen_uci(str(ROOT / entry["binary"]), env=env)
             engine.configure({k: v for k, v in entry["options"].items() if k not in ["Ponder", "MultiPV"]})
             engines.append(engine)
-        judge = chess.engine.SimpleEngine.popen_uci(str(ROOT / ".benchmark-tools/Stockfish/src/stockfish-17.1"), env=env)
-        judge.configure({"Threads": 1, "Hash": 32, "UCI_LimitStrength": False, "Skill Level": 20, "SyzygyProbeLimit": 0})
+        judge = chess.engine.SimpleEngine.popen_uci(str(judge_binary), env=env)
+        judge.configure(judge_options)
         engines.append(judge)
         with destination.open("x") as output:
             for index, position in enumerate(positions):
@@ -178,7 +189,7 @@ def common_position_probe(spec, results_dir):
                 choices = []
                 evaluated = {}
                 for entry, engine in zip(spec["engines"], engines[:2]):
-                    play = engine.play(board, chess.engine.Limit(time=0.25), game=object(), info=chess.engine.INFO_ALL)
+                    play = engine.play(board, chess.engine.Limit(time=0.25), game=object(), ponder=False, info=chess.engine.INFO_ALL)
                     move = play.move
                     if move not in board.legal_moves:
                         raise ValueError("Invalid choice from style engine")

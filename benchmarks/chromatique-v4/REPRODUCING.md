@@ -43,6 +43,10 @@ searches. Inspect `results/style-probes.jsonl` for every position, history,
 selected move, search budget, judge score and principal variation. Mate
 transitions have their own record and are excluded from centipawn-loss
 comparisons. Style differences use one source position per opening pair.
+`results/style-positions.json` records the PGN, model, binary and script hashes
+prepared immediately before probing, the source engine settings and the
+actual judge options. Either existing style evidence file blocks a new probe
+run before any output is written; use a fresh results directory to repeat it.
 
 After the timed matches finish, inspect the predeclared examples with:
 
