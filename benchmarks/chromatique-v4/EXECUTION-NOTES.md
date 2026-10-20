@@ -85,9 +85,19 @@ Its configured lifetime follows the fixed 400-game runner. Power conditions
 were not continuously logged before that assertion; CPU affinity, frequency
 and thermals remain uncontrolled.
 
-The first 120+1 match completed at 2026-10-20 18:49:01 UTC with Fastchess
-exit status zero. Its 200 PGN result headers and receipt checksum were verified;
-all termination tags are normal. The log reports Chromatique W/D/L 171/5/24.
-The fixed Stash comparison started immediately afterward. Independent legal
-replay and paired intervals for both long-clock matches will run after that
-comparison; the final review is still pending.
+The two 120+1 matches completed with Fastchess exit status zero: SF2400 at
+2026-10-20 18:49:01 UTC and Stash at 21:27:11 UTC. The queued independent
+analysis then passed legal replay, exact opening-pair checks and receipt
+checksums for all 400 games. Chromatique W/D/L is 171/5/24 against SF2400 and
+161/20/19 against Stash. One Stash Black disconnect loss is retained (PGN
+Round 85, Fastchess game 169, ply 229); its cause is unknown. The other 399
+termination tags are normal. Neither match reached the administrative cap.
+The explicit idle-sleep guard exited normally at 21:27:11 UTC; its completed
+lifecycle receipt is retained in `results/anchor-idle-guard.json`.
+
+All 17 match receipts, including the seven selection pilots, have exit status
+zero and matching PGN checksums/counts. All 34 raw logs and recovery states
+were retained locally and losslessly archived after the last timed game.
+The archive manifest records compressed and original byte counts and SHA-256
+hashes; every decompressed byte was compared with its original. The final
+fresh-checkout setup check and whole-branch review are still pending.
