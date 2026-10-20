@@ -1,9 +1,11 @@
 # Reproducing the benchmark
 
 Run commands from the repository root. Use Python 3.14.7 with the existing
-`requirements-dev.txt` pins to reproduce the recorded analysis environment.
-Other Python/platform versions can run the scripts, but their results are
-fresh experiments rather than byte-identical build reproductions.
+`requirements-dev.txt` pins and [package constraints](data/python-constraints.txt)
+to reproduce the recorded analysis environment. The constraints also fix the
+transitive `chess` library at 1.11.2; `python-chess==1.999` alone permits any 1.x
+release. New matches on other Python/platform versions are fresh experiments
+rather than byte-identical build reproductions.
 
 ## Verify the retained evidence
 
@@ -11,6 +13,7 @@ Install the repository's declared development requirements in a local venv,
 or use the setup script below. Then run:
 
 ```sh
+.benchmark-tools/venv/bin/python -m pip install -r requirements-dev.txt -c benchmarks/chromatique-v4/data/python-constraints.txt
 .benchmark-tools/venv/bin/python -m unittest discover -s tests -v
 .benchmark-tools/venv/bin/python -m unittest discover -s benchmarks/chromatique-v4/scripts -p 'test_*.py' -v
 .benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/analyze.py benchmarks/chromatique-v4/pilot.json --output /tmp/chromatique-pilot-replayed.json

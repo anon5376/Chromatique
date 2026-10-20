@@ -26,7 +26,7 @@ clone_at https://github.com/mhouppin/stash-bot.git .benchmark-tools/Stash 7d17ff
 clone_at https://github.com/Warpten/Fruit-2.1.git .benchmark-tools/Fruit-2.1 09627df3835f205c92ece013219c7a99ac4a023a
 
 python3 -m venv .benchmark-tools/venv
-.benchmark-tools/venv/bin/python -m pip install -r requirements-dev.txt
+.benchmark-tools/venv/bin/python -m pip install -r requirements-dev.txt -c benchmarks/chromatique-v4/data/python-constraints.txt
 make JOBS=4 GIT_SHA=4d462c8f GIT_DATE=20261019
 if [ "$(uname -s)" = Darwin ]; then
     make -C .benchmark-tools/Stockfish/src -j4 build ARCH=apple-silicon COMP=clang EXE=stockfish-17.1
