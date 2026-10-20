@@ -1,11 +1,11 @@
 # Execution notes
 
 The target's C++ source and weights remain unchanged from the pinned v4
-revision. The initial seven release tests passed. The benchmark's eight focused
+revision. The initial seven release tests passed. The benchmark's nine focused
 tests cover score orientation, opening-pair uncertainty, degenerate samples,
 replayed result/color/pair validation, material-offer accounting and exclusion
-of mate scores from centipawn loss, and predeclared low/high-loss example
-selection. A CLI regression also checks that rejected style reruns preserve
+of mate scores from centipawn loss, predeclared low/high-loss example selection,
+and archive-manifest preservation. A CLI regression also checks that rejected style reruns preserve
 all existing files without starting an engine. Other CLI checks verified
 lossless log archiving, rejection of
 unfinished runs, and rejection of partial style panels before example judging.
@@ -118,5 +118,18 @@ warning; they passed replay and input-hash checks rather than a false claim
 of identity with the current runner command. An initial audit incorrectly
 treated judge node limits as minimum work. Probe 142's shared mate-in-three
 choice search ended at 21,917 nodes; both logical records remain in the data.
-The corrected audit checks those mate records separately. The final
-whole-branch review is still pending.
+The corrected audit checks those mate records separately.
+
+A fresh whole-branch review of `66a725f` independently replayed all 2,868 games,
+reproduced all 17 summaries, checked all 34 archives, measured input hashes,
+style records and source captures, and found no blocking scientific error.
+It found one Important/P2 custody defect: invoking the archiver in a published
+checkout without raw logs replaced its retained manifest with an empty one.
+The archiver now rejects empty raw input before writing, and reproduction
+instructions point to the new run directory. The public-CLI regression failed
+before the fix and passed afterward; the final suites passed seven release
+tests and nine benchmark tests. Rerunning archival with the actual raw evidence
+verified all 34 archives and left the manifest byte-identical. The review had
+no Critical findings, deferred minors or declined-to-judge items. The fix and
+its evidence are in `results/review-verification.json`; no new games or judge
+searches were needed.

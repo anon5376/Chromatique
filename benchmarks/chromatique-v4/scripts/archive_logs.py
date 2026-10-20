@@ -18,6 +18,8 @@ def main():
     args = parser.parse_args()
     records = []
     paths = sorted([*args.results_dir.glob("*.log"), *args.results_dir.glob("*.state.json")])
+    if not paths:
+        raise ValueError("No raw logs or recovery states; existing archive manifest left unchanged")
     for path in paths:
         name = path.name.removesuffix(".log").removesuffix(".state.json")
         receipt = json.loads((args.results_dir / (name + ".run.json")).read_text())

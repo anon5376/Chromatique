@@ -153,14 +153,16 @@ replay. Score-based resign/draw adjudication is disabled; the two evaluators
 have different score meanings. Administrative 300-move draws, clock losses,
 crashes and illegal moves must be counted and disclosed from the results.
 
-After every scheduled match has finished, logs and recovery states can be
-compressed for review with:
+After the new scheduled matches finish, archive their output directory:
 
 ```sh
-.benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/archive_logs.py
+.benchmark-tools/venv/bin/python benchmarks/chromatique-v4/scripts/archive_logs.py --results-dir .benchmark-tools/reproduction-results
 ```
 
 The script verifies a byte-exact decompression roundtrip and records raw and
-compressed SHA-256 hashes in `results/log-archives.json`. Raw logs and states
+compressed SHA-256 hashes in the selected directory's `log-archives.json`. Raw logs and states
 remain on disk and are ignored by Git; their lossless `.gz` copies are the
-review artifacts. PGNs remain ordinary, uncompressed `.pgn` files.
+review artifacts. PGNs remain ordinary, uncompressed `.pgn` files. An archive-only
+published checkout has no raw inputs; the script rejects that case before
+writing a manifest, preserving the retained provenance. Omitting `--results-dir`
+is appropriate only when archiving raw runs in the original `results/` directory.

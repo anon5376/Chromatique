@@ -267,6 +267,9 @@ The [final data-verification receipt](results/verification.json) records
 identical recomputed summaries, unchanged measured inputs, legal style
 histories/choices/PVs and the completed-run guards. The fresh setup passed all
 seven release tests and eight benchmark tests.
+The subsequent [review fix and final verification](results/review-verification.json)
+add an archive-preservation regression; the final suites pass seven release
+tests and nine benchmark tests. The measured results remain unchanged.
 
 Rerunning the same wall-clock searches need not reproduce the same moves.
 Reproducibility means pinned inputs, explicit controls, complete retained
