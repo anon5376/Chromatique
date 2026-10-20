@@ -5,8 +5,9 @@ test_uncertainty_uses_opening_pairs_not_independent_games (test_analysis.Analysi
 test_selects_low_and_high_loss_candidates_and_excludes_mate (test_examples.ExampleSelection.test_selects_low_and_high_loss_candidates_and_excludes_mate) ... ok
 test_mate_scores_do_not_become_centipawn_losses (test_style.StyleAccounting.test_mate_scores_do_not_become_centipawn_losses) ... ok
 test_piece_offer_counts_net_concession_and_excludes_equal_trade (test_style.StyleAccounting.test_piece_offer_counts_net_concession_and_excludes_equal_trade) ... ok
+test_rejected_rerun_preserves_existing_evidence (test_style.StyleAccounting.test_rejected_rerun_preserves_existing_evidence) ... ok
 
 ----------------------------------------------------------------------
-Ran 7 tests in 0.037s
+Ran 8 tests in 0.046s
 
 OK

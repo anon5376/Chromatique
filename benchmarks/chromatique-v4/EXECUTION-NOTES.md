@@ -1,11 +1,13 @@
 # Execution notes
 
 The target's C++ source and weights remain unchanged from the pinned v4
-revision. The initial seven release tests passed. The benchmark's seven focused
+revision. The initial seven release tests passed. The benchmark's eight focused
 tests cover score orientation, opening-pair uncertainty, degenerate samples,
 replayed result/color/pair validation, material-offer accounting and exclusion
 of mate scores from centipawn loss, and predeclared low/high-loss example
-selection. CLI checks also verified lossless log archiving, rejection of
+selection. A CLI regression also checks that rejected style reruns preserve
+all existing files without starting an engine. Other CLI checks verified
+lossless log archiving, rejection of
 unfinished runs, and rejection of partial style panels before example judging.
 
 The complete main schedule, sampled opening panels and initial scripts were
@@ -43,6 +45,12 @@ The deterministic low/high-loss example-selection rule was committed in
 probe existed. It uses the previously unseen probe estimates and has no
 source-game-outcome filter. Its timing is separate from the original match
 schedule's freeze.
+
+Before any style probes ran, rerun testing exposed writes to the position
+manifest and descriptive outputs before the script refused existing probe
+evidence. The guard now runs before those writes. The retained expected-failure
+logs demonstrate the defect; the updated eight-test suite passes all three
+existing-file cases. Tests used temporary fixtures and blocked engine startup.
 
 During timed matches, the agent inspected progress, edited documentation and
 scripts, and ran brief focused script tests (under one second of measured

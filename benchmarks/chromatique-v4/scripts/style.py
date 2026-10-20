@@ -150,13 +150,14 @@ def judge_loss(baseline, selected):
 
 
 def common_position_probe(spec, results_dir):
+    destination = results_dir / "style-probes.jsonl"
+    manifest = results_dir / "style-positions.json"
+    if destination.exists() or manifest.exists():
+        raise FileExistsError("Do not overwrite existing style probe evidence")
     positions, excluded = probe_positions(spec, results_dir)
-    (results_dir / "style-positions.json").write_text(json.dumps(
+    manifest.write_text(json.dumps(
         {"source_match": spec["id"], "selection": "one hash-selected game and eligible preselected ply per opening pair",
          "positions": positions, "excluded": excluded}, indent=2) + "\n")
-    destination = results_dir / "style-probes.jsonl"
-    if destination.exists():
-        raise FileExistsError("Do not overwrite existing style probe evidence")
     env = {k: v for k, v in os.environ.items() if not k.startswith("CHROMATIQUE_")}
     engines = []
     try:
@@ -252,9 +253,9 @@ def main():
     args = parser.parse_args()
     schedule = json.loads(args.schedule.read_text())
     if not args.summarize_only:
-        describe(schedule, args.results_dir)
         spec = next(m for m in schedule["matches"] if m["id"] == args.central_match)
         common_position_probe(spec, args.results_dir)
+        describe(schedule, args.results_dir)
     summarize_probes(args.results_dir)
 
 
