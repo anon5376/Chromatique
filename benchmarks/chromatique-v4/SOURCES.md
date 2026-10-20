@@ -91,6 +91,8 @@ Reviewed `PROTOCOL.md`, `schedule.json`, `scripts/analyze.py`, `scripts/style.py
 
 The already-disclosed normal/bootstrap approximation, individual rather than simultaneous intervals, evaluator-family dependence, unequal unrestricted/forced judge searches, exploratory style metrics and external-rating uncertainty remain limitations. They are not additional reasons to stop the fixed experiment. Queenless-by-move-40 and game length describe the shared game; neither supplies an engine-specific style effect on its own.
 
+Implementation follow-up: the mate-handling finding above was repaired in `13dbda1` before any style probes ran. The completed panel contains one mate-valued position, excluded from ordinary centipawn statistics. See [execution notes](EXECUTION-NOTES.md) and the [retained results](results/style-probe-summary.json).
+
 **Verified Stash reference and inherited Stockfish calibration — update 2026-10-20**
 
 This update supersedes the earlier missing-Stash-row statement and the blanket CCRL access-failure statement. Normal sandbox DNS and web opens failed, but authorized public `curl` reads subsequently returned HTTP 200 and the expected rating content. The following are directly retained primary-source captures, rather than search snippets.
@@ -104,6 +106,8 @@ The [current Blitz conditions](https://computerchess.org.uk/404/about.html) spec
 The [author's pinned commit](https://github.com/mhouppin/stash-bot/commit/7d17ff80eb53b9d4808fd285c7439e641f1c5a3b) sets the release version to 15.3. This matches CCRL's named release. The public rating entry supplies no tested-binary hash, so release identity does not establish binary identity or equal strength between its 64-bit build and the local ARM-native build. The rating is a BayesElo pool estimate; adding our logistic match delta to 2174 is an illustrative anchored performance estimate, not a recomputed CCRL rating. Publish the two uncertainty sources separately. [BayesElo author's model description](https://www.remi-coulom.fr/Bayesian-Elo/).
 
 **Stockfish 17.1 inherits a historical calibration.** The [official Stockfish 16 announcement, dated 2023-06-30](https://stockfishchess.org/blog/2023/stockfish-16/), links the original calibration change. The [Stockfish 16 polynomial](https://github.com/official-stockfish/Stockfish/blob/sf_16/src/search.cpp#L89) and [Stockfish 17.1 polynomial](https://github.com/official-stockfish/Stockfish/blob/sf_17.1/src/search.h#L170) have identical coefficients. The latter explicitly calls its CCRL Blitz mapping approximate and references the older fit. No fresh empirical calibration specific to 17.1 was located. The original fit's roughly 100-Elo disagreement with CCRL is historical context, **not a quantified current error bound or confidence interval for Stockfish 17.1**. A prospective 120+1 match aligns the clock format with that historical fit; hardware, build, model and pool transfer remain uncertain.
+
+A short [retained publisher excerpt](data/ccrl-stash153-excerpt.txt) preserves the dated row, rating model and interval definition, tied to the full response hash.
 
 Capture provenance is below. Times are UTC from each response's HTTP `Date` header, all on 2026-10-20. Files are retained under workspace `tmp/`.
 

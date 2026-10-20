@@ -96,5 +96,11 @@
     "list_computed_date": "2026-10-16",
     "stash_15_3_present": false,
     "scope": "absence in this snapshot only"
+  },
+  "retained_excerpt": {
+    "file": "ccrl-stash153-excerpt.txt",
+    "sha256": "027e325e74d6dd2c1501ff7559758385ea477cafb7c98b10d1a4ac6d0e4e1be3",
+    "source_capture_sha256": "951db112489df56fc2849cc19d9ce2c43bd890e19fbb849f040d87877eaacb26",
+    "quoted_words": 23
   }
 }
