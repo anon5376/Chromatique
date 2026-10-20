@@ -6,6 +6,7 @@ __pycache__/
 *.pyc
 .DS_Store
 .venv/
+.benchmark-tools/
 bin/*
 !bin/.gitkeep
 src/.build_*

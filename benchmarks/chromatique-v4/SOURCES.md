@@ -1,0 +1,78 @@
+# Chromatique benchmark evidence note
+
+Reviewed 2026-10-20. Use paired openings, a predeclared final sample, and intervals computed from complete game pairs. Report relative match Elo as the main result. Treat a Stockfish strength setting or a historical rating-list value as a conditional anchor, with its calibration limits visible.
+
+This note supplies source evidence and analysis recommendations. It contains no match results. The suggested build commands below were inspected against source but were not executed by this researcher.
+
+**What is being tested**
+
+The inspected Chromatique revision is `4d462c8f7883f4e08d3d0e151de0374a6150ea22`. Its README describes an independent neural evaluator and learned policy over a Stockfish 19 search and move-generation core. Its reused puzzle panel is explicitly a development benchmark, not an Elo estimate or final holdout. The romantic-style description is a claim to test. [Pinned README](https://github.com/lusolitaire-dot/Chromatique/blob/4d462c8f7883f4e08d3d0e151de0374a6150ea22/README.md), [pinned attribution](https://github.com/lusolitaire-dot/Chromatique/blob/4d462c8f7883f4e08d3d0e151de0374a6150ea22/NOTICE).
+
+Chromatique exposes `Skill Level`, `UCI_LimitStrength`, and `UCI_Elo`; its inherited conversion still cites the Stockfish/Stash calibration. That conversion does not calibrate the replacement evaluator. Set Chromatique to full strength (`Skill Level=20`, `UCI_LimitStrength=false`) and record the actual UCI transcript. [Pinned controls](https://github.com/lusolitaire-dot/Chromatique/blob/4d462c8f7883f4e08d3d0e151de0374a6150ea22/src/engine.cpp#L109), [pinned inherited conversion](https://github.com/lusolitaire-dot/Chromatique/blob/4d462c8f7883f4e08d3d0e151de0374a6150ea22/src/search.h#L247).
+
+**Match design and statistical interpretation**
+
+- Cutechess documents `-repeat` as replaying an opening with exchanged colors. Fastchess documents two games per round, opening-file selection, a randomization seed, PGN export, and pentanomial reporting. Pin the runner revision, opening file and seed. Preserve opening identity so pair reconstruction is auditable. [Cutechess manual](https://github.com/cutechess/cutechess/blob/master/docs/cutechess-cli.6), [Fastchess manual](https://github.com/Disservin/fastchess/blob/master/man.md).
+- Fishtest uses five pair outcomes: `LL`, `LD`, `DD/WL`, `WD`, `WW`. The statistical unit is the complete reversed-color pair, with total scores 0, 0.5, 1, 1.5, or 2. The original implementation explains why ignoring pairing changes interval estimates. [Fishtest mathematics](https://official-stockfish.github.io/docs/fishtest-wiki/Fishtest-Mathematics.html), [author's pentanomial implementation](https://github.com/vdbergh/pentanomial).
+- SPRT tests predeclared hypotheses using a sequential stopping rule; it is not a target-precision rating experiment. Fishtest uses separate machinery to estimate Elo after sequential tests. For this report, choose opponents with a pilot, then freeze a separate final schedule and sample before seeing its results. Avoid repeatedly extending the final run until an ordinary fixed-sample interval excludes zero. This fixed-sample recommendation is our study-design choice. [Fishtest sequential methodology](https://github.com/official-stockfish/fishtest/wiki/Fishtest-mathematics), [Fishtest implementation](https://raw.githubusercontent.com/official-stockfish/fishtest/master/server/fishtest/stats/stat_util.py).
+
+For ordinary logistic Elo, score fraction `s = (W + D/2) / N` maps to `400 log10(s/(1-s))` Elo relative to that opponent under these match conditions. Fishtest implements this score transform. Its fixed-sample interval uses score variance and a normal approximation; its sequential estimator is separate. Label the Elo model: logistic Elo, BayesElo and normalized Elo are different quantities. [Fishtest statistical source](https://raw.githubusercontent.com/official-stockfish/fishtest/master/server/fishtest/stats/stat_util.py).
+
+Recommended reporting calculations, derived for this study:
+
+- Divide each pair's total score by two. The resulting observation is in `{0, 0.25, 0.5, 0.75, 1}`. Estimate the mean and its uncertainty across pairs, then transform the score interval endpoints to Elo. A normal or pair-bootstrap interval is approximate; state the method.
+- Do not treat draws as two independent half-point trials or bootstrap individual games. If the same openings recur against several opponents, preserve that opening cluster when pooling across opponents. Report opponent-specific results first.
+- A sample with no pair-score variance needs special treatment; a zero-width bootstrap interval would be misleading. At score 0 or 1 the raw logistic estimate is unbounded. Show the boundary and uncertainty rather than silently clamping it to a finite rating.
+- As a planning approximation near a 50% score, the worst-variance normal half-width is about `681/sqrt(M)` Elo for `M` independent pairs. Thus 200 pairs gives roughly ±48 Elo and 1,000 gives roughly ±22 Elo. This calculation excludes calibration, book-selection and model errors; actual pair variance determines the reported interval.
+
+Retain crashes, illegal moves, time forfeits, unfinished games, pair completeness, and termination reasons in the primary record. If a documented scheduling fault motivates a sensitivity analysis, show both totals and the exclusion rule. A changed control or excluded game must not silently replace the original result.
+
+**Stockfish 17.1 calibration is approximate**
+
+The `sf_17.1` source converts `UCI_Elo` through a fit against versions of Stash and describes its range as approximately 1320–3190 CCRL Blitz Elo. [Stockfish 17.1 source](https://github.com/official-stockfish/Stockfish/blob/sf_17.1/src/search.h#L170).
+
+The calibration commit referenced by that source used 120 seconds plus a 1-second increment. Its author says the Stash ratings in the fit agreed with CCRL only within about ±100 Elo, probably because of opponent-pool effects. Older 60+0.6 wording was replaced in that same commit. That ±100 is an author's calibration caveat, not an independent Gaussian standard deviation to add mechanically to a match error bar. [Original calibration commit and README change](https://github.com/vondele/Stockfish/commit/a08b8d4e9711c2).
+
+Stockfish's official FAQ explains that weaker play deliberately selects suboptimal moves, and that Elo depends on time control, openings, hardware and opponent pool. Therefore a match against `Stockfish 17.1 UCI_Elo=2000` at another time control establishes performance against that configured engine. Adding 2000 to the measured Elo difference produces a nominal estimate on the settings ladder, not an independently verified CCRL or human FIDE rating. [Official Stockfish FAQ](https://official-stockfish.github.io/docs/stockfish-wiki/Stockfish-FAQ.html#the-elo-rating-of-stockfish).
+
+**Small public opening book**
+
+The official Stockfish book repository publishes `8moves_v3.pgn.zip` under CC0-1.0. Its metadata lists 34,700 entries, each 16 plies deep; GitHub reports the ZIP as 789 KB. [Repository and license](https://github.com/official-stockfish/books), [book metadata](https://github.com/official-stockfish/books/blob/master/books.json), [archive](https://github.com/official-stockfish/books/blob/master/8moves_v3.pgn.zip), [raw download](https://raw.githubusercontent.com/official-stockfish/books/master/8moves_v3.pgn.zip).
+
+Use a pinned repository revision and record the archive and extracted-file hashes. Select a reproducible sample without repeating an opening within a final matchup. The metadata's `white` count denotes side to move, not proof of evaluation balance. The Stockfish team's book comparison measured nonzero opening bias for this book, so describe color-balanced pairing separately from positional balance. [Primary book comparison](https://github.com/official-stockfish/Stockfish/issues/3323).
+
+**Independent native opponents: verified published snapshots**
+
+The accessible CCRL pages below identify their snapshot as **2024-11-16**. Their ratings are historical selection guidance. CCRL 40/15 uses time scaled to an Intel i7-4770k, ponder off, a shared generic book up to 12 moves, specified hash and tablebase conditions. An Apple Silicon fast match does not reproduce those conditions. [CCRL testing conditions](https://computerchess.org/about.html).
+
+| Candidate | Published CCRL 40/15 snapshot | Source and practical limit |
+|---|---:|---|
+| Pigeon 1.5.1 64-bit | 1753, +24/−24; 502 games | [CCRL row](https://computerchess.org/cgi/engine_details.cgi?each_game=0&eng=Pigeon+1.5.1+64-bit&print=Details). [Author repository](https://github.com/StuartRiffle/pigeon), MIT and UCI. CMake identifies 1.5.1, but the source assumes x86 intrinsics and CPU detection; this is a poor candidate for a small ARM-native build. [Version](https://github.com/StuartRiffle/pigeon/blob/master/CMakeLists.txt), [platform assumptions](https://github.com/StuartRiffle/pigeon/blob/master/src/platform.h). |
+| Vice 1.0 64-bit | 1995, +22/−22; 639 games | [CCRL row](https://computerchess.org/cgi/engine_details.cgi?each_game=0&eng=Vice+1.0+64-bit&print=Details). The [author repository](https://github.com/bluefeversoft/vice) now points to instructional chapter branches and latest 1.1. No exact rated-1.0 source match was verified here. Do not label a current branch with the 1.0 rating. |
+| Fruit 2.1 | 2693, +22/−22; 518 games | [CCRL row](https://www.computerchess.org/cgi/engine_details.cgi?eng=Fruit+2.1&print=Details). Fabien Letouzey's original release README identifies UCI-only, portable C++ source and GPL-2.0-or-later. It names WBEC as official distributor. [Original distribution page](https://www.wbec-ridderkerk.nl/html/details1/Fruit.html), [retained original README in mirror](https://github.com/Warpten/Fruit-2.1/blob/master/readme.txt). |
+| Texel 1.03 64-bit | 2946, +21/−21; 538 games | [CCRL row](https://www.computerchess.org/cgi/engine_details.cgi?eng=Texel+1.03+64-bit&print=Details). The [author's exact release](https://github.com/peterosterlund2/texel/releases/tag/1.03) identifies tag `1.03`, commit beginning `ed426c5`. This supplies a stronger native candidate; its ARM build path was not inspected. |
+
+Fruit's official archive discovery URL is `https://www.wbec-ridderkerk.nl/html/download/fruit/fruit_21.zip`. The WBEC page fetched once but timed out on subsequent access; the archive itself was not downloaded here. The GitHub mirror's [Makefile](https://github.com/Warpten/Fruit-2.1/blob/master/src/Makefile) suggests `make -C src CXX=clang++ LDFLAGS=-lm`; overriding the link flags removes an old strip option. This command remains unexecuted. If using that mirror, record its full commit and retain the unverified archive-identity limitation. Disable Fruit's own opening book and use the default evaluation parameters.
+
+For an intermediate opponent, the author-owned [Stash v15.3 release](https://github.com/mhouppin/stash-bot/releases/tag/v15.3) supplies C source, UCI and GPL-3.0-or-later. Its [tagged README](https://github.com/mhouppin/stash-bot/blob/v15.3/README.md) self-reports around 2160 Elo. The [tagged Makefile](https://github.com/mhouppin/stash-bot/blob/v15.3/src/Makefile) has a generic path when `ARCH` is unset; candidate command `make -C src CC=clang` is unexecuted. A matching independent CCRL row was not retrieved. The Stockfish calibration fit fixed this version at 2200 locally; that is a fit anchor, not fresh external verification.
+
+**Testing the style claim**
+
+The following are proposed operational measures, not a recognized rating scale for romantic chess. Exclude forced opening plies, preserve the denominator of freely chosen moves, and compare engines from matched positions or equivalent paired schedules.
+
+| Measure | Reproducible definition | Interpretation limit |
+|---|---|---|
+| Checks and captures | Fraction of chosen moves giving check; fraction capturing | Forced defense and tactical necessity can produce both. |
+| Quiet moves | Fraction that are neither captures, checks, nor promotions | A quiet move can prepare a combination; this cannot establish “zero positional play.” |
+| Material-deficit episodes | Declare piece weights, loss threshold and persistence window; count episodes rather than each deficit ply | Material loss can be an exchange, forced defense, or blunder. Call these candidates, not sacrifices. |
+| Sacrifice candidates | Preserve the move, FEN, legal alternatives, ensuing material change, and full continuation | A later opponent mistake does not prove the original offer was sound. |
+| Soundness review | Reanalyze candidates and alternatives with a pinned stronger evaluator at a fixed analysis budget | Search is an estimate. Report evaluation loss and analysis settings; inspect promotion, mate and tablebase cases separately. |
+| Outcome context | Give candidate counts by game result, opponent and color | Winning games alone select flattering examples. |
+
+Use simple piece weights only as an accounting rule; never equate material points to either engine's reported centipawns. Stockfish's normalized evaluation and WDL model depend on self-play conditions, and it does not itself assign “brilliant” move labels. [Official evaluation and annotation explanation](https://official-stockfish.github.io/docs/stockfish-wiki/Stockfish-FAQ.html#interpretation-of-the-stockfish-evaluation).
+
+A defensible conclusion can say that the tested build produced more checks or more inspected sound sacrifice candidates than its comparator in this sample. A few striking wins, high puzzle accuracy, or frequent material losses alone cannot establish the advertised style.
+
+**Access and remaining uncertainty**
+
+CCRL's current `.org.uk` full pages repeatedly failed to open; shell `curl` also failed DNS with exit 6. Accessible `.org` engine-detail pages supplied the explicitly dated snapshots above. Fruit's current homepage returned 502, WBEC was intermittent, and SourceForge could not be opened. A potential style-measurement paper encountered a browser challenge and was not used. No source-access failure was treated as evidence about an engine's strength or availability.
