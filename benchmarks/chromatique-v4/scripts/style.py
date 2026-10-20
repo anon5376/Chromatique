@@ -53,12 +53,12 @@ def move_features(board, move):
             "material_concession_proxy": concession}
 
 
-def describe(schedule):
+def describe(schedule, results_dir):
     rows = []
     for spec in schedule["matches"]:
         if not spec["id"].startswith("main-"):
             continue
-        with (BASE / "results" / (spec["id"] + ".pgn")).open() as stream:
+        with (results_dir / (spec["id"] + ".pgn")).open() as stream:
             for index, game in enumerate(iter(lambda: chess.pgn.read_game(stream), None), 1):
                 if game.errors:
                     raise ValueError(game.errors)
@@ -85,7 +85,7 @@ def describe(schedule):
                                  "queenless_by40": int(queenless_by40),
                                  "game_moves": board.ply() / 2, **dict(counts[color])})
     fields = ["match", "game", "engine", "color", "result", "game_moves", "moves", "checks", "captures", "quiet", "promotions", "deficit_ge2_moves", "queenless_by40"]
-    with (BASE / "results/game-style.csv").open("w") as stream:
+    with (results_dir / "game-style.csv").open("w") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields, restval=0)
         writer.writeheader()
         writer.writerows(rows)
@@ -98,12 +98,12 @@ def describe(schedule):
                            for name in fields[7:-1]},
                         "queenless_by40_games": sum(r["queenless_by40"] for r in group),
                         "mean_game_moves": statistics.mean(r["game_moves"] for r in group)})
-    (BASE / "results/game-style-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    (results_dir / "game-style-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
 
 
-def probe_positions(spec):
+def probe_positions(spec, results_dir):
     groups = defaultdict(list)
-    path = BASE / "results" / (spec["id"] + ".pgn")
+    path = results_dir / (spec["id"] + ".pgn")
     with path.open() as stream:
         for index, game in enumerate(iter(lambda: chess.pgn.read_game(stream), None), 1):
             moves = tuple(m.uci() for m in game.mainline_moves())
@@ -143,12 +143,18 @@ def score_info(info, color):
             "pv": [m.uci() for m in info.get("pv", [])]}
 
 
-def common_position_probe(spec):
-    positions, excluded = probe_positions(spec)
-    (BASE / "data/style-positions.json").write_text(json.dumps(
+def judge_loss(baseline, selected):
+    if baseline["mate"] is not None or selected["mate"] is not None:
+        return None
+    return baseline["cp_or_mate_equivalent"] - selected["cp_or_mate_equivalent"]
+
+
+def common_position_probe(spec, results_dir):
+    positions, excluded = probe_positions(spec, results_dir)
+    (results_dir / "style-positions.json").write_text(json.dumps(
         {"source_match": spec["id"], "selection": "one hash-selected game and eligible preselected ply per opening pair",
          "positions": positions, "excluded": excluded}, indent=2) + "\n")
-    destination = BASE / "results/style-probes.jsonl"
+    destination = results_dir / "style-probes.jsonl"
     if destination.exists():
         raise FileExistsError("Do not overwrite existing style probe evidence")
     env = {k: v for k, v in os.environ.items() if not k.startswith("CHROMATIQUE_")}
@@ -179,7 +185,7 @@ def common_position_probe(spec):
                         info = judge.analyse(board, chess.engine.Limit(nodes=200000), root_moves=[move], game=object())
                         evaluated[move] = score_info(info, board.turn)
                     evaluation = evaluated[move]
-                    loss = baseline["cp_or_mate_equivalent"] - evaluation["cp_or_mate_equivalent"]
+                    loss = judge_loss(baseline, evaluation)
                     choices.append({"engine": entry["name"], "move": move.uci(), "san": board.san(move),
                                     **move_features(board, move), "judge": evaluation,
                                     "judge_loss_cp": loss, "search_nodes": play.info.get("nodes"),
@@ -195,33 +201,45 @@ def common_position_probe(spec):
             engine.quit()
 
 
-def summarize_probes():
-    rows = [json.loads(s) for s in (BASE / "results/style-probes.jsonl").read_text().splitlines()]
-    expected = json.loads((BASE / "data/style-positions.json").read_text())["positions"]
+def summarize_probes(results_dir):
+    rows = [json.loads(s) for s in (results_dir / "style-probes.jsonl").read_text().splitlines()]
+    expected = json.loads((results_dir / "style-positions.json").read_text())["positions"]
     if len(rows) != len(expected) or [r["index"] for r in rows] != list(range(len(expected))):
         raise ValueError("Incomplete style probes")
     measures = {
         "check": lambda c: int(c["check"]), "capture": lambda c: int(c["capture"]),
         "quiet": lambda c: int(c["quiet"]),
         "material_offer_proxy": lambda c: int(c["material_concession_proxy"] >= 1),
-        "low_loss_offer_proxy": lambda c: int(c["material_concession_proxy"] >= 1 and c["judge_loss_cp"] <= 50 and c["judge"]["mate"] is None),
+        "low_loss_offer_proxy": lambda c: int(c["material_concession_proxy"] >= 1 and c["judge_loss_cp"] <= 50),
         "loss_ge100cp": lambda c: int(c["judge_loss_cp"] >= 100),
     }
     result = {"positions": len(rows), "same_choice": sum(r["choices"][0]["move"] == r["choices"][1]["move"] for r in rows),
               "choice_seconds": 0.25, "judge_nodes_per_search": 200000, "metrics": {}}
+    result["mate_transitions"] = [{"index": r["index"], "baseline_mate": r["baseline_judge"]["mate"],
+                                    "selected_mates": [c["judge"]["mate"] for c in r["choices"]]}
+                                   for r in rows if any(c["judge_loss_cp"] is None for c in r["choices"])]
     rng = np.random.default_rng(20261020)
     for name, function in measures.items():
-        values = np.array([[function(c) for c in r["choices"]] for r in rows])
+        eligible = rows if name not in ("low_loss_offer_proxy", "loss_ge100cp") else [
+            r for r in rows if all(c["judge_loss_cp"] is not None for c in r["choices"])]
+        if not eligible:
+            result["metrics"][name] = {"eligible_pairs": 0, "counts": None, "rates": None,
+                                        "target_minus_reference": None, "paired_bootstrap95": None,
+                                        "hoeffding95_difference": None}
+            continue
+        values = np.array([[function(c) for c in r["choices"]] for r in eligible])
         delta = values[:, 0] - values[:, 1]
         samples = rng.choice(delta, size=(20000, len(delta)), replace=True).mean(axis=1)
         interval = np.quantile(samples, [0.025, 0.975]).tolist() if len(set(delta)) > 1 else None
         halfwidth = 2 * math.sqrt(math.log(2 / 0.05) / (2 * len(delta)))
-        result["metrics"][name] = {"counts": values.sum(axis=0).tolist(), "rates": values.mean(axis=0).tolist(),
+        result["metrics"][name] = {"eligible_pairs": len(eligible), "counts": values.sum(axis=0).tolist(), "rates": values.mean(axis=0).tolist(),
                                    "target_minus_reference": float(delta.mean()),
                                    "paired_bootstrap95": interval,
                                    "hoeffding95_difference": [max(-1, float(delta.mean()) - halfwidth), min(1, float(delta.mean()) + halfwidth)]}
-    result["median_nonnegative_judge_loss_cp"] = [statistics.median(max(0, r["choices"][i]["judge_loss_cp"]) for r in rows) for i in [0, 1]]
-    (BASE / "results/style-probe-summary.json").write_text(json.dumps(result, indent=2) + "\n")
+    losses = [[max(0, r["choices"][i]["judge_loss_cp"]) for r in rows if r["choices"][i]["judge_loss_cp"] is not None] for i in [0, 1]]
+    result["median_nonnegative_judge_loss_cp"] = [statistics.median(v) if v else None for v in losses]
+    result["nonmate_loss_positions_per_engine"] = [len(v) for v in losses]
+    (results_dir / "style-probe-summary.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
 
 
@@ -230,13 +248,14 @@ def main():
     parser.add_argument("schedule", type=Path)
     parser.add_argument("--central-match", required=True)
     parser.add_argument("--summarize-only", action="store_true")
+    parser.add_argument("--results-dir", type=Path, default=BASE / "results")
     args = parser.parse_args()
     schedule = json.loads(args.schedule.read_text())
     if not args.summarize_only:
-        describe(schedule)
+        describe(schedule, args.results_dir)
         spec = next(m for m in schedule["matches"] if m["id"] == args.central_match)
-        common_position_probe(spec)
-    summarize_probes()
+        common_position_probe(spec, args.results_dir)
+    summarize_probes(args.results_dir)
 
 
 if __name__ == "__main__":

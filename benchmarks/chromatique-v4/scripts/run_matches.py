@@ -23,8 +23,8 @@ def now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
-def run(spec):
-    prefix = BASE / "results" / spec["id"]
+def run(spec, results_dir):
+    prefix = results_dir / spec["id"]
     receipt = prefix.with_suffix(".run.json")
     pgn = prefix.with_suffix(".pgn")
     log = prefix.with_suffix(".log")
@@ -83,9 +83,12 @@ def run(spec):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("schedule", type=Path)
+    parser.add_argument("--results-dir", type=Path, default=BASE / "results")
     args = parser.parse_args()
+    args.results_dir = args.results_dir.resolve()
+    args.results_dir.mkdir(parents=True, exist_ok=True)
     for spec in json.loads(args.schedule.read_text())["matches"]:
-        run(spec)
+        run(spec, args.results_dir)
 
 
 if __name__ == "__main__":

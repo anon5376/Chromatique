@@ -109,6 +109,8 @@ differently, so negative estimated losses are retained in raw data. Game
 length and both-queens-absent-by-move-40 are descriptive game context.
 Style comparisons are exploratory and their intervals are not corrected for
 multiple comparisons. A degenerate bootstrap is marked unavailable.
+Mate-valued searches are recorded as mate transitions and excluded from
+ordinary centipawn-loss thresholds and medians.
 
 ## Deliverables and acceptance
 

@@ -3,6 +3,9 @@
 set -eu
 cd "$(dirname "$0")/../../.."
 mkdir -p .benchmark-tools
+git diff --quiet 4d462c8f7883f4e08d3d0e151de0374a6150ea22 -- src weights Makefile release.json || {
+    echo "Target engine differs from the measured revision" >&2; exit 1;
+}
 clone_at() {
     url=$1
     directory=$2

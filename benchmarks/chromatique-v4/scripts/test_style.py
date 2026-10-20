@@ -2,10 +2,17 @@
 import unittest
 import chess
 
-from style import move_features
+from style import judge_loss, move_features
 
 
 class StyleAccounting(unittest.TestCase):
+    def test_mate_scores_do_not_become_centipawn_losses(self):
+        self.assertEqual(judge_loss({"cp_or_mate_equivalent": 120, "mate": None},
+                                    {"cp_or_mate_equivalent": 20, "mate": None}), 100)
+        for baseline, selected in [({"cp_or_mate_equivalent": 100000, "mate": 3}, {"cp_or_mate_equivalent": 20, "mate": None}),
+                                   ({"cp_or_mate_equivalent": 120, "mate": None}, {"cp_or_mate_equivalent": -100000, "mate": -4})]:
+            self.assertIsNone(judge_loss(baseline, selected))
+
     def test_piece_offer_counts_net_concession_and_excludes_equal_trade(self):
         board = chess.Board("rnbq1rk1/ppp2ppp/5n2/3pP3/3P4/3B1N2/PPP2PPP/RNBQ1RK1 w - - 0 8")
         result = move_features(board, chess.Move.from_uci("d3h7"))

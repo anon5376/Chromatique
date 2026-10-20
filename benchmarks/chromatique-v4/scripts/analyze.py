@@ -61,7 +61,7 @@ def read_openings(path, count):
     return result[:count]
 
 
-def validate_games(stream, target, openings, book_plies=16):
+def validate_games(stream, target, openings, book_plies=16, tc=None):
     expected = set(openings)
     if len(expected) != len(openings):
         raise ValueError("Duplicate expected openings")
@@ -74,6 +74,10 @@ def validate_games(stream, target, openings, book_plies=16):
     for game in iter(lambda: chess.pgn.read_game(stream), None):
         if game.errors:
             raise ValueError(f"PGN parse/legality errors: {game.errors}")
+        if game.board().fen() != chess.STARTING_FEN:
+            raise ValueError("Unexpected PGN initial position")
+        if tc is not None and game.headers.get("TimeControl") != tc:
+            raise ValueError("PGN time control disagrees with schedule")
         result = game.headers.get("Result")
         if result not in ("1-0", "0-1", "1/2-1/2"):
             raise ValueError("Unfinished game in PGN")
@@ -117,10 +121,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("schedule", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--results-dir", type=Path, default=BASE / "results")
     args = parser.parse_args()
     rows = []
     for spec in json.loads(args.schedule.read_text())["matches"]:
-        prefix = BASE / "results" / spec["id"]
+        prefix = args.results_dir / spec["id"]
         receipt = json.loads(prefix.with_suffix(".run.json").read_text())
         pgn = prefix.with_suffix(".pgn")
         if receipt.get("returncode") != 0 or receipt["spec"] != spec:
@@ -133,7 +138,7 @@ def main():
         openings = read_openings(book, spec["pairs"])
         target = spec["engines"][0]["name"]
         with pgn.open() as stream:
-            row = validate_games(stream, target, openings)
+            row = validate_games(stream, target, openings, tc=spec["tc"])
         if row["opponent"] != spec["engines"][1]["name"]:
             raise ValueError("Unexpected opponent")
         row.update(paired_stats(row.pop("pairs")))

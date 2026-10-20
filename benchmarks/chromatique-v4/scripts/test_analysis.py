@@ -39,6 +39,9 @@ class AnalysisContract(unittest.TestCase):
             validate_games(io.StringIO(one), "Target", [("f2f3", "e7e5")], book_plies=2)
         with self.assertRaisesRegex(ValueError, "color"):
             validate_games(io.StringIO(one + one), "Target", [("f2f3", "e7e5")], book_plies=2)
+        wrong_clock = (one + two).replace('[Termination "normal"]', '[Termination "normal"]\n[TimeControl "30+0.3"]')
+        with self.assertRaisesRegex(ValueError, "time control"):
+            validate_games(io.StringIO(wrong_clock), "Target", [("f2f3", "e7e5")], book_plies=2, tc="5+0.05")
 
 
 if __name__ == "__main__":
