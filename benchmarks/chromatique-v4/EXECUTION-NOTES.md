@@ -83,5 +83,11 @@ anchor inputs were committed as `55e879d` before the 120+1 runner started at
 that runner and verified at 16:06:27 UTC with `caffeinate -i -w <runner PID>`.
 Its configured lifetime follows the fixed 400-game runner. Power conditions
 were not continuously logged before that assertion; CPU affinity, frequency
-and thermals remain uncontrolled. The long-clock results and final review are
-still pending.
+and thermals remain uncontrolled.
+
+The first 120+1 match completed at 2026-10-20 18:49:01 UTC with Fastchess
+exit status zero. Its 200 PGN result headers and receipt checksum were verified;
+all termination tags are normal. The log reports Chromatique W/D/L 171/5/24.
+The fixed Stash comparison started immediately afterward. Independent legal
+replay and paired intervals for both long-clock matches will run after that
+comparison; the final review is still pending.
