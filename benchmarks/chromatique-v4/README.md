@@ -1,9 +1,107 @@
 # Chromatique v4: playing strength and style
 
-**Measurements are in progress. No final playing rating or style verdict is
-published yet.** Completed PGNs and run receipts are retained in
-[`results/`](results/); final results require complete schedules, independent
-PGN replay, statistical analysis and review.
+**The original 2,300 games and 200-position style panel are complete and
+validated. The two 120+1 comparisons and final review are still pending.**
+Completed PGNs, probe records and run receipts are retained in [`results/`](results/).
+
+## Completed original schedule
+
+At **5 seconds + 0.05 seconds/move**, Chromatique scored **67.00% against Stash 15.3**: **+123
+logistic Elo, 95% interval +90 to +158**. Adding Stash’s published 2174 gives
+an illustrative point near **2300**; external transfer uncertainty remains
+unknown. The 400-game 120+1 validation schedule is still running, so the final strength
+assessment is pending.
+
+| Match, first engine’s perspective | Clock | Games | W/D/L | Score | Relative logistic Elo, 95% interval |
+|---|---|---:|---:|---:|---:|
+| Chromatique vs SF17.1 E2200 | 5+0.05 | 400 | 280/18/102 | 72.25% | +166 [+131, +205] |
+| Chromatique vs SF17.1 E2400 | 5+0.05 | 400 | 222/17/161 | 57.63% | +53 [+20, +88] |
+| Chromatique vs SF17.1 E2600 | 5+0.05 | 400 | 132/28/240 | 36.50% | -96 [-131, -64] |
+| Chromatique vs Stash 15.3 | 5+0.05 | 400 | 246/44/110 | 67.00% | +123 [+90, +158] |
+| SF17.1 E2200 vs E2400 | 5+0.05 | 200 | 56/17/127 | 32.25% | -129 [-183, -81] |
+| SF17.1 E2400 vs E2600 | 5+0.05 | 200 | 38/23/139 | 24.75% | -193 [-242, -151] |
+| Stash 15.3 vs SF17.1 E2400 | 5+0.05 | 200 | 87/14/99 | 47.00% | -21 [-68, +25] |
+| Chromatique vs SF17.1 E2400 | 30+0.3 | 100 | 76/4/20 | 78.00% | +220 [+147, +315] |
+
+Clock values are initial seconds plus seconds per move. Intervals above use
+complete opening pairs and the normal approximation.
+[Machine-readable results](results/summary.json) also retain the seeded pair
+bootstrap, conservative Hoeffding intervals, pair variances and exact hashes.
+The Stash–SF2400 bridge was nearly even (47%–53%), so the printed Stockfish
+setting does not independently establish the opponent’s local external rating.
+The 30+0.3 result was stronger than the fast result against that setting;
+clocks and disjoint opening panels both differ in this sensitivity comparison.
+
+Every recorded move passed legal replay and every expected opening appeared
+exactly twice with colors reversed. The original schedule retains one
+Stockfish time-forfeit win for Chromatique, two Stash disconnect wins for
+Chromatique, and one Stash disconnect loss in the bridge. Their underlying
+causes are undiagnosed. No game reached the 300-move administrative cap;
+the longest was 245 moves.
+
+| Match | Pair counts: LL, LD, DD/WL, WD, WW | White W/D/L | Black W/D/L |
+|---|---|---:|---:|
+| Chromatique vs SF17.1 E2200 (5+0.05) | 15, 1, 72, 15, 97 | 135/7/58 | 145/11/44 |
+| Chromatique vs SF17.1 E2400 (5+0.05) | 32, 6, 92, 9, 61 | 114/7/79 | 108/10/82 |
+| Chromatique vs SF17.1 E2600 (5+0.05) | 70, 17, 84, 9, 20 | 67/14/119 | 65/14/121 |
+| Chromatique vs Stash 15.3 (5+0.05) | 15, 12, 70, 28, 75 | 125/26/49 | 121/18/61 |
+| SF17.1 E2200 vs E2400 (5+0.05) | 43, 7, 36, 6, 8 | 28/11/61 | 28/6/66 |
+| SF17.1 E2400 vs E2600 (5+0.05) | 44, 17, 36, 2, 1 | 22/11/67 | 16/12/72 |
+| Stash 15.3 vs SF17.1 E2400 (5+0.05) | 25, 5, 44, 9, 17 | 46/7/47 | 41/7/52 |
+| Chromatique vs SF17.1 E2400 (30+0.3) | 2, 1, 15, 3, 29 | 38/2/10 | 38/2/10 |
+
+## Completed style observations
+
+The common-position panel supports a **capture-seeking tendency in this
+sample**. It does not clearly show more checks or more low-loss material
+offers. Most Chromatique choices were quiet. These observations do not
+establish the advertised “zero positional play” or a general tendency toward
+sound sacrifices.
+
+| Common-position measure | Chromatique | SF17.1 E2400 | Difference in percentage points, bootstrap 95% | Positions |
+|---|---:|---:|---:|---:|
+| Check | 3.5% | 2.5% | +1.0 [-1.5, +4.0] | 200 |
+| Capture | 35.0% | 19.0% | +16.0 [+10.0, +22.0] | 200 |
+| Quiet | 64.0% | 80.5% | -16.5 [-23.0, -10.5] | 200 |
+| Material-offer proxy | 11.0% | 9.0% | +2.0 [-1.5, +5.5] | 200 |
+| Offer proxy with estimated loss ≤50 cp | 6.5% | 4.5% | +2.0 [-1.0, +5.0] | 199 |
+| Estimated loss ≥100 cp | 11.6% | 15.1% | -3.5 [-9.5, +2.5] | 199 |
+
+These are exploratory, individual percentile-bootstrap intervals. The more
+conservative Hoeffding intervals include zero for every difference; all are
+published in [the complete style summary](results/style-probe-summary.json).
+One mate-valued position is excluded from ordinary centipawn thresholds.
+Both engines chose the same move in 58/200 positions. The median of
+`max(0, estimated judge loss)` was 9 cp for Chromatique and 16 cp for the
+reference over 199 non-mate positions each.
+
+The full-game descriptive data are separate from this matched-position
+comparison. Chromatique’s quiet-move fraction varied from 63.6% to 75.3%
+across main opponents; game trajectories and opponent strength confound those
+rates. [Per-game rows](results/game-style.csv) and [all descriptive summaries](results/game-style-summary.json)
+retain the denominators.
+
+Three examples were selected by the predeclared loss-ranking rule and
+rejudged at two million nodes per search:
+
+- **Probe 27, 13.Bxe6:** a credible tactical offer. The legal acceptance line
+  `Bxe6 fxe6 Qxe6+` concedes one pawn-equivalent net material. The retained
+  stronger-judge line instead declines with `...Qe7`; the forced-choice score
+  remains +234 cp, 24 cp below the unrestricted estimate.
+- **Probe 102, 17.Nxc7:** a temporary knight offer. The recorded line
+  `Nxc7 Nxc7 Nxd6 Ne6 Rxc8+ Rxc8 Nxc8` recovers material and leaves White
+  two pawn-equivalents better than before the sequence. Both engines chose
+  this move. Its −6 cp estimated loss is small search noise, not proof of
+  improvement over the best move.
+- **Probe 143, 13.h4:** a large estimated error. The move leaves Black’s d4-pawn
+  fork on Nc3 and Be3 unaddressed; the baseline move `Bxd4` removes that pawn.
+  The stronger judge changes from +73 cp at baseline to −355 cp after `h4`,
+  a 428 cp loss. The reference’s `Ne2` also loses an estimated 231 cp. This
+  case shows how the offer proxy can count an already hanging piece.
+
+[Example JSON](results/style-examples.json) and [annotated analysis PGNs](results/style-examples.pgn)
+retain full histories and PVs. These are selected illustrations, not a
+representative sacrifice success rate or a claim to know the engine’s intent.
 
 ## What is measured
 
