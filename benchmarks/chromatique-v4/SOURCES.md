@@ -90,3 +90,29 @@ Reviewed `PROTOCOL.md`, `schedule.json`, `scripts/analyze.py`, `scripts/style.py
 - **Style inference stays conditional on this panel.** Probe positions all occur on Chromatique's turns in its central-match games. Both engines receive identical boards, but the distribution reflects those game trajectories and excludes checks, short games and positions with few legal moves. Equal 0.25-second searches also define a different condition from the match time control. Report this sampled-position comparison; it does not establish a universal engine personality.
 
 The already-disclosed normal/bootstrap approximation, individual rather than simultaneous intervals, evaluator-family dependence, unequal unrestricted/forced judge searches, exploratory style metrics and external-rating uncertainty remain limitations. They are not additional reasons to stop the fixed experiment. Queenless-by-move-40 and game length describe the shared game; neither supplies an engine-specific style effect on its own.
+
+**Verified Stash reference and inherited Stockfish calibration — update 2026-10-20**
+
+This update supersedes the earlier missing-Stash-row statement and the blanket CCRL access-failure statement. Normal sandbox DNS and web opens failed, but authorized public `curl` reads subsequently returned HTTP 200 and the expected rating content. The following are directly retained primary-source captures, rather than search snippets.
+
+**Stash 15.3 64-bit has a verified CCRL Blitz rating of 2174, +19/−19, from 982 games**, in the list computed on **2026-10-17**. CCRL's own column explanation identifies these bars as **95% confidence intervals**. Its detailed record gives 496 wins, 151 draws and 335 losses. [Complete list and column definitions](https://computerchess.org.uk/404/rating_list_all.html), [exact engine record](https://computerchess.org.uk/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=Stash%2015.3%2064-bit).
+
+The [official 982-game archive](https://computerchess.org.uk/404/games-by-engine/Stash_15_3_64-bit.bare.%5B982%5D.pgn.7z) contains games dated **2020-05-12 through 2020-05-29**. All 982 lack a `TimeControl` tag; the bare PGNs also lack CPU, hash, ponder and thread-option tags. The archive's current `Event` and Elo tags reflect the present Blitz publication. They do not establish the historical clocks or hardware.
+
+The [current Blitz conditions](https://computerchess.org.uk/404/about.html) specify time equivalent to **2+1 on an Intel i7-4770K**, using Stockfish 10 to scale machine speed. Present policy also specifies ponder off, 128 or 256 MB shared hash, tablebases and a shared generic opening book limited to 12 moves. These are present-policy facts, not verified conditions for those May 2020 games. The [2026-10-16 complete 40/15 snapshot](https://computerchess.org.uk/4040/rating_list_all.html) contains no Stash 15.3 entry; an earlier 40/15 rating was not established.
+
+The [author's pinned commit](https://github.com/mhouppin/stash-bot/commit/7d17ff80eb53b9d4808fd285c7439e641f1c5a3b) sets the release version to 15.3. This matches CCRL's named release. The public rating entry supplies no tested-binary hash, so release identity does not establish binary identity or equal strength between its 64-bit build and the local ARM-native build. The rating is a BayesElo pool estimate; adding our logistic match delta to 2174 is an illustrative anchored performance estimate, not a recomputed CCRL rating. Publish the two uncertainty sources separately. [BayesElo author's model description](https://www.remi-coulom.fr/Bayesian-Elo/).
+
+**Stockfish 17.1 inherits a historical calibration.** The [official Stockfish 16 announcement, dated 2023-06-30](https://stockfishchess.org/blog/2023/stockfish-16/), links the original calibration change. The [Stockfish 16 polynomial](https://github.com/official-stockfish/Stockfish/blob/sf_16/src/search.cpp#L89) and [Stockfish 17.1 polynomial](https://github.com/official-stockfish/Stockfish/blob/sf_17.1/src/search.h#L170) have identical coefficients. The latter explicitly calls its CCRL Blitz mapping approximate and references the older fit. No fresh empirical calibration specific to 17.1 was located. The original fit's roughly 100-Elo disagreement with CCRL is historical context, **not a quantified current error bound or confidence interval for Stockfish 17.1**. A prospective 120+1 match aligns the clock format with that historical fit; hardware, build, model and pool transfer remain uncertain.
+
+Capture provenance is below. Times are UTC from each response's HTTP `Date` header, all on 2026-10-20. Files are retained under workspace `tmp/`.
+
+| Capture | UTC | Bytes | SHA-256 |
+|---|---|---:|---|
+| `ccrl-blitz-all.html` — complete list URL above | 14:26:34 | 2398391 | `951db112489df56fc2849cc19d9ce2c43bd890e19fbb849f040d87877eaacb26` |
+| `ccrl-4015-all.html` — 40/15 URL above | 14:28:31 | 3883455 | `4880f2e392b99d12eb8cca6b5acb927c68d0f18eba776ce945f5b89e8acd5ece` |
+| `ccrl-blitz-about.html` — conditions URL above | 14:29:35 | 6670 | `908cf7f1c981112cf08c483a7881a0d8777d8fb99fb359089a065d4bc80f08a4` |
+| `ccrl-stash153-detail.html` — engine-record URL above | 14:31:20 | 38267 | `bb67ae23e4ada0ffee7c55fce4ec608cf9399ba254b1972ff711033d52964994` |
+| `ccrl-stash153.pgn.7z` — archive URL above | 14:32:46 | 199108 | `a6639d03114c4f4085b182c9c5abf8cef540addccdc8f00f06c4f5c02519b338` |
+
+The archive's single decompressed PGN is 992755 bytes, SHA-256 `3a0e9c848bd58300ec76b327e50fd0ed0ce92ff08d576a943b83f787364ecc53`. Only source-header metadata was inspected; no engines, builds, tests or match analysis ran during this lookup. No 403, 429 or browser challenge was bypassed.
