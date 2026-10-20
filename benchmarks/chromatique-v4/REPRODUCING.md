@@ -43,6 +43,9 @@ searches. Inspect `results/style-probes.jsonl` for every position, history,
 selected move, search budget, judge score and principal variation. Mate
 transitions have their own record and are excluded from centipawn-loss
 comparisons. Style differences use one source position per opening pair.
+The derived `game-style.csv` is stored with LF line endings in Git; a local
+Python CSV writer can emit CRLF. Compare parsed rows for CSV regeneration
+checks.
 `results/style-positions.json` records the PGN, model, binary and script hashes
 prepared immediately before probing, the source engine settings and the
 actual judge options. Either existing style evidence file blocks a new probe
@@ -83,6 +86,10 @@ preserves its original embedded revision/date. The setup guard rejects
 changes to the target source or weights relative to the measured revision.
 Exact binary hashes can differ with compiler, linker, platform or build
 metadata; retain new hashes with any new results.
+
+The measured long-clock runner uses the built-in macOS `caffeinate` utility
+for an idle-sleep assertion scoped to its lifetime. Its verified attachment
+time and execution limits are recorded in [the notes](EXECUTION-NOTES.md).
 
 Fruit 2.1 is a source-mirror build used only in the selection pilot. The
 original distributor archive returned HTTP 404, so identity with its original

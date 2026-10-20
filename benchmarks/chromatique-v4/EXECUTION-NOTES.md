@@ -64,3 +64,24 @@ mirror builds and identifies as Fruit 2.1; byte identity with the original
 author archive remains unverified. No current external rating was inferred
 from the download failure. The dated CCRL snapshot is context, not a
 calibration of this Apple Silicon build or time control.
+
+The complete original 2,300-game schedule passed independent legal replay,
+exact opening-pair checks and receipt checksums. It retains one Stockfish time
+forfeit and three reported Stash crash/disconnect losses; their underlying
+causes remain undiagnosed. No game reached the administrative 300-move limit
+(maximum 245). All 200 style source histories/FENs, 400 legal choices,
+SAN/check/capture/quiet flags, mate-aware losses and 600 recorded judge PVs were
+checked against the source PGN and position manifest. Repeated choices share
+a judge search. The three predeclared examples were rejudged at two million
+nodes before long-clock matches began; their analysis histories and PVs
+passed legality checks.
+
+The four original opening panels remained byte-identical when the new
+100-position anchor panel was generated. All five panels are disjoint. The
+anchor inputs were committed as `55e879d` before the 120+1 runner started at
+2026-10-20 16:00:04 UTC. An explicit macOS idle-sleep assertion was attached to
+that runner and verified at 16:06:27 UTC with `caffeinate -i -w <runner PID>`.
+Its configured lifetime follows the fixed 400-game runner. Power conditions
+were not continuously logged before that assertion; CPU affinity, frequency
+and thermals remain uncontrolled. The long-clock results and final review are
+still pending.
