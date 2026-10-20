@@ -38,7 +38,7 @@ sources and found no blocking formula error. It identified mate-to-centipawn
 mixing in the initial style implementation. Before any style probes ran, the
 script was changed to report mate transitions separately. A focused test
 demonstrated the missing behavior and then passed with the correction.
-This review is distinct from the final code/results review still required.
+This review preceded the separate final code/results review reported below.
 
 The deterministic low/high-loss example-selection rule was committed in
 `f36cb72`, after the first main match but before any common-position style
