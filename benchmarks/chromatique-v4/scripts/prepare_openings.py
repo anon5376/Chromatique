@@ -41,7 +41,7 @@ def main():
                 "license": "CC0-1.0", "book_games": count,
                 "distinct_nonterminal_positions": len(keys), "panels": {}}
     offset = 0
-    for name, size in [("pilot", 50), ("main", 200), ("bridge", 100), ("slow", 50)]:
+    for name, size in [("pilot", 50), ("main", 200), ("bridge", 100), ("slow", 50), ("anchor", 100)]:
         games = []
         for i, key in enumerate(keys[offset:offset + size], 1):
             game = chess.pgn.Game()
@@ -51,7 +51,12 @@ def main():
                 node = node.add_variation(chess.Move.from_uci(uci))
             games.append(str(game))
         path = BASE / "data" / f"{name}-openings.pgn"
-        path.write_text("\n\n".join(games) + "\n", encoding="utf-8")
+        content = "\n\n".join(games) + "\n"
+        if path.exists():
+            if path.read_text(encoding="utf-8") != content:
+                raise ValueError(f"Existing opening panel differs: {path}")
+        else:
+            path.write_text(content, encoding="utf-8")
         manifest["panels"][name] = {"count": size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
         offset += size
     (BASE / "data/openings.json").write_text(json.dumps(manifest, indent=2) + "\n")
