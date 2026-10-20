@@ -99,5 +99,24 @@ All 17 match receipts, including the seven selection pilots, have exit status
 zero and matching PGN checksums/counts. All 34 raw logs and recovery states
 were retained locally and losslessly archived after the last timed game.
 The archive manifest records compressed and original byte counts and SHA-256
-hashes; every decompressed byte was compared with its original. The final
-fresh-checkout setup check and whole-branch review are still pending.
+hashes; every decompressed byte was compared with its original.
+
+The complete setup script passed in a fresh temporary checkout of `7d8c7dc`,
+with pinned public-source downloads and the existing constrained Python
+requirements, from 21:29:08 to 21:30:05 UTC. All seven release tests and eight
+benchmark tests passed there; both suites also passed in the measured checkout
+after the timed matches. The target, model, all reference-engine binaries and
+opening manifest reproduced byte-for-byte on this host. Fastchess's fresh
+binary hash differed; its source revision and both binary hashes are retained.
+The original measured binaries were preserved. Linux was not exercised.
+
+The final data audit recomputed all 17 match summaries identically and all
+style summaries from retained records. Ten fixed-run receipt guards returned
+`Already complete` without new games. The seven historical pilot commands
+precede `restart=on`, and the Stash pilot retains its unsupported `Ponder`
+warning; they passed replay and input-hash checks rather than a false claim
+of identity with the current runner command. An initial audit incorrectly
+treated judge node limits as minimum work. Probe 142's shared mate-in-three
+choice search ended at 21,917 nodes; both logical records remain in the data.
+The corrected audit checks those mate records separately. The final
+whole-branch review is still pending.

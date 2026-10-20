@@ -29,9 +29,10 @@ count, opening-file hash and PGN hash. It then recomputes W/D/L, all pair
 scores and the reported uncertainty. Match failures remain part of W/D/L;
 the termination table identifies them separately.
 
-`results/summary.json` is the machine-readable main result. Compare the
-replayed JSON with that file. Pilot and main estimates are separate. The
-ordinary 95% intervals are conditional on this opening population, machine,
+`results/summary.json` and `results/anchor-summary.json` are the machine-readable
+fixed-schedule results. Compare the replayed JSON with those files. Pilot and
+main estimates are separate. The ordinary 95% intervals are conditional on
+this opening population, machine,
 time control and engine configuration. The distribution-free intervals are
 more conservative. None includes external rating-anchor uncertainty.
 
@@ -79,9 +80,12 @@ opening archive, verifies/regenerates the four original panels and the new
 disjoint anchor panel, and runs the tests.
 It does not change the system package manager or engine source. Network
 access, GNU Make and a C/C++ compiler are required. The recorded Apple
-Silicon build used Apple Clang 21; the Linux build path is supplied but was
-not run in this experiment. No binaries or external source trees are
-distributed in this PR.
+Silicon build used Apple Clang 21. The complete setup passed in a fresh
+checkout of `7d8c7dc`; [its receipt](results/setup-receipt.json) and
+[compressed output](results/setup-output.txt.gz) retain the commands, source
+revisions, installed versions, hashes and both passing test suites. The
+Linux build path is supplied but was not run in this experiment. No binaries
+or external source trees are distributed in this PR.
 
 `data/environment.json` records all source revisions, model, binary and
 Stockfish-network hashes, compiler commands and hardware. The target build
@@ -89,6 +93,11 @@ preserves its original embedded revision/date. The setup guard rejects
 changes to the target source or weights relative to the measured revision.
 Exact binary hashes can differ with compiler, linker, platform or build
 metadata; retain new hashes with any new results.
+On the measured host, the fresh target, model and all reference-engine
+binaries matched the measured hashes; the fresh Fastchess binary differed.
+Fastchess includes its compilation date in the CLI version information.
+Both sets are retained in the receipts. No new matches were run with the
+rebuilt tools.
 
 The measured long-clock runner uses the built-in macOS `caffeinate` utility
 for an idle-sleep assertion scoped to its lifetime. Its verified attachment

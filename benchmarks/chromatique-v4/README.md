@@ -1,16 +1,19 @@
 # Chromatique v4: playing strength and style
 
-**The original 2,300 games and 200-position style panel are complete and
-validated. The two 120+1 comparisons and final review are still pending.**
-Completed PGNs, probe records and run receipts are retained in [`results/`](results/).
+**All 2,700 fixed-schedule games and the 200-position style panel are complete.
+All 2,868 match games, including 168 excluded selection games, passed independent
+legal replay.** PGNs, probe records and run receipts are retained in
+[`results/`](results/).
 
-## Completed original schedule
+## Measured strength
 
-At **5 seconds + 0.05 seconds/move**, Chromatique scored **67.00% against Stash 15.3**: **+123
-logistic Elo, 95% interval +90 to +158**. Adding Stash’s published 2174 gives
-an illustrative point near **2300**; external transfer uncertainty remains
-unknown. The 400-game 120+1 validation schedule is still running, so the final strength
-assessment is pending.
+At **120 seconds + 1 second/move**, Chromatique scored **85.50% against
+Stash 15.3**: **+308 relative logistic Elo, 95% interval +255 to +377**.
+Adding Stash’s published 2174 gives a conditional point near **2480**. At
+**5+0.05**, it scored **67.00%**, or **+123 [+90, +158]**, giving an illustrative
+point near **2300**. These are clock-specific measurements on this host;
+external rating transfer remains uncertain. A single calibrated CCRL, FIDE
+or online rating is not established.
 
 | Match, first engine’s perspective | Clock | Games | W/D/L | Score | Relative logistic Elo, 95% interval |
 |---|---|---:|---:|---:|---:|
@@ -22,22 +25,34 @@ assessment is pending.
 | SF17.1 E2400 vs E2600 | 5+0.05 | 200 | 38/23/139 | 24.75% | -193 [-242, -151] |
 | Stash 15.3 vs SF17.1 E2400 | 5+0.05 | 200 | 87/14/99 | 47.00% | -21 [-68, +25] |
 | Chromatique vs SF17.1 E2400 | 30+0.3 | 100 | 76/4/20 | 78.00% | +220 [+147, +315] |
+| Chromatique vs SF17.1 E2400 | 120+1 | 200 | 171/5/24 | 86.75% | +326 [+266, +408] |
+| Chromatique vs Stash 15.3 | 120+1 | 200 | 161/20/19 | 85.50% | +308 [+255, +377] |
 
 Clock values are initial seconds plus seconds per move. Intervals above use
 complete opening pairs and the normal approximation.
-[Machine-readable results](results/summary.json) also retain the seeded pair
+[Original results](results/summary.json) and
+[long-clock results](results/anchor-summary.json) also retain the seeded pair
 bootstrap, conservative Hoeffding intervals, pair variances and exact hashes.
 The Stash–SF2400 bridge was nearly even (47%–53%), so the printed Stockfish
 setting does not independently establish the opponent’s local external rating.
-The 30+0.3 result was stronger than the fast result against that setting;
-clocks and disjoint opening panels both differ in this sensitivity comparison.
+The longer-clock results were stronger than the fast results against the same
+opponents. Clocks and disjoint opening panels both differ, so this sensitivity
+comparison does not isolate the causal effect of thinking time.
+
+Each long-clock comparison has 100 complete opening pairs. Its alternative
+intervals show the practical limits of precision:
+
+| 120+1 opponent | Pair bootstrap 95% Elo | Conservative Hoeffding 95% Elo |
+|---|---:|---:|
+| SF17.1 E2400 | [+266, +402] | [+174, +∞] |
+| Stash 15.3 | [+255, +372] | [+163, +813] |
 
 Every recorded move passed legal replay and every expected opening appeared
-exactly twice with colors reversed. The original schedule retains one
-Stockfish time-forfeit win for Chromatique, two Stash disconnect wins for
-Chromatique, and one Stash disconnect loss in the bridge. Their underlying
-causes are undiagnosed. No game reached the 300-move administrative cap;
-the longest was 245 moves.
+exactly twice with colors reversed. The fixed schedule retains one Stockfish
+time-forfeit win for Chromatique, three Stash disconnect wins for Chromatique
+(two fast, one long), and one Stash disconnect loss in the bridge. Their
+underlying causes are undiagnosed. No game reached the 300-move administrative
+cap; the longest was 245 moves.
 
 | Match | Pair counts: LL, LD, DD/WL, WD, WW | White W/D/L | Black W/D/L |
 |---|---|---:|---:|
@@ -49,6 +64,8 @@ the longest was 245 moves.
 | SF17.1 E2400 vs E2600 (5+0.05) | 44, 17, 36, 2, 1 | 22/11/67 | 16/12/72 |
 | Stash 15.3 vs SF17.1 E2400 (5+0.05) | 25, 5, 44, 9, 17 | 46/7/47 | 41/7/52 |
 | Chromatique vs SF17.1 E2400 (30+0.3) | 2, 1, 15, 3, 29 | 38/2/10 | 38/2/10 |
+| Chromatique vs SF17.1 E2400 (120+1) | 1, 1, 21, 4, 73 | 91/1/8 | 80/4/16 |
+| Chromatique vs Stash 15.3 (120+1) | 0, 3, 16, 17, 64 | 84/7/9 | 77/13/10 |
 
 ## Completed style observations
 
@@ -194,6 +211,13 @@ published rating interval separate from our match interval; the remaining
 transfer uncertainty is unknown. [Primary references and capture
 provenance](SOURCES.md), [structured source receipt](data/rating-sources.json).
 
+For scale, the 120+1 nominal Stockfish-setting equivalent is `2400 + 326 =
+2726`, while the Stash illustration is `2174 + 308 = 2482`. Their roughly
+244-point difference is not resolved by the match sampling intervals. The
+source rating’s ±19 interval and the unmeasured transfer error remain separate
+from our relative-match intervals. Averaging these numbers would conceal the
+calibration disagreement.
+
 Neither comparison awards Chromatique a CCRL, human FIDE or online rating.
 
 ## Evaluating the romantic-style claim
@@ -234,9 +258,15 @@ example-inspection commands, with fresh output directories for new matches.
 The scripts use only the repository's declared Python development
 requirements. External UCI engines and Fastchess are local benchmark tools;
 their source trees and binaries are not redistributed here. PGNs remain
-plain text. After all matches finish, completed logs and recovery states will
-be retained in lossless gzip archives with raw/compressed checksums and
-verified roundtrips.
+plain text. All 34 completed match logs and recovery states are retained in
+lossless gzip archives with raw/compressed checksums and verified roundtrips
+in [the archive manifest](results/log-archives.json). The
+[fresh-checkout setup receipt](results/setup-receipt.json) and its compressed
+output retain the actual build and test result; Linux remains untested.
+The [final data-verification receipt](results/verification.json) records
+identical recomputed summaries, unchanged measured inputs, legal style
+histories/choices/PVs and the completed-run guards. The fresh setup passed all
+seven release tests and eight benchmark tests.
 
 Rerunning the same wall-clock searches need not reproduce the same moves.
 Reproducibility means pinned inputs, explicit controls, complete retained
